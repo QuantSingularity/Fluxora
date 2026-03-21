@@ -4,7 +4,7 @@
 [![Test Coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](https://github.com/quantsingularity/Fluxora/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🔋 Energy Forecasting & Optimization Platform
+## Energy Forecasting & Optimization Platform
 
 Fluxora is an advanced energy forecasting and optimization platform that leverages machine learning to predict energy consumption patterns and optimize resource allocation. The system helps utilities, grid operators, and energy managers make data-driven decisions for improved efficiency and sustainability.
 
@@ -14,7 +14,7 @@ Fluxora is an advanced energy forecasting and optimization platform that leverag
 
 > **Note**: This project is under active development. Features and functionalities are continuously being enhanced to improve accuracy and user experience.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Project Structure](#project-structure)
 - [Features](#features)
@@ -68,7 +68,7 @@ Fluxora is built on a modern, robust, and scalable technology stack.
 | **Database**         | PostgreSQL, Redis             | Persistent data storage and caching/session management                             |
 | **Infrastructure**   | Docker, Kubernetes, Terraform | Containerization, orchestration, and Infrastructure as Code                        |
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Clone the repository
