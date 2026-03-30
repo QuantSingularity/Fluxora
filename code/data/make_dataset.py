@@ -54,7 +54,7 @@ def make_dataset(output_path: str = "data/raw/mock_data.csv") -> Any:
     """
     Generates the mock dataset and saves it to the specified path.
     """
-    logger.info(f"Generating mock dataset...")
+    logger.info("Generating mock dataset...")
     data = generate_mock_data()
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     data.to_csv(output_path, index=False)

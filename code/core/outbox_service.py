@@ -134,7 +134,7 @@ async def process_messages() -> None:
             # Get unprocessed messages
             messages = (
                 db.query(OutboxMessage)
-                .filter(OutboxMessage.processed == False)
+                .filter(not OutboxMessage.processed)
                 .order_by(OutboxMessage.created_at)
                 .limit(10)
                 .all()
