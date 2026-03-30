@@ -1,5 +1,13 @@
-import React from "react";
 import {
+  BarChart as BarChartIcon,
+  Dashboard as DashboardIcon,
+  BoltOutlined as EnergyIcon,
+  Settings as SettingsIcon,
+  Timeline as TimelineIcon,
+} from "@mui/icons-material";
+import {
+  Box,
+  Divider,
   Drawer,
   List,
   ListItem,
@@ -7,17 +15,8 @@ import {
   ListItemText,
   Toolbar,
   Typography,
-  Box,
-  Divider,
   useTheme,
 } from "@mui/material";
-import {
-  Dashboard as DashboardIcon,
-  Timeline as TimelineIcon,
-  BarChart as BarChartIcon,
-  Settings as SettingsIcon,
-  BoltOutlined as EnergyIcon,
-} from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const drawerWidth = 240;
@@ -63,14 +62,14 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, isMobile }) => {
               borderRadius: 2,
               backgroundColor:
                 location.pathname === item.path
-                  ? theme.palette.primary.light + "20"
+                  ? `${theme.palette.primary.light}20`
                   : "transparent",
               color:
                 location.pathname === item.path
                   ? theme.palette.primary.main
                   : theme.palette.text.primary,
               "&:hover": {
-                backgroundColor: theme.palette.primary.light + "10",
+                backgroundColor: `${theme.palette.primary.light}10`,
               },
             }}
           >

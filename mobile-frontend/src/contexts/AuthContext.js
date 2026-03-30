@@ -1,5 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
   // Load user from storage on mount
   useEffect(() => {
     loadUser();
-  }, []);
+  }, [loadUser]);
 
   const loadUser = async () => {
     try {
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (username, password) => {
+  const login = async (username, _password) => {
     try {
       // In a real app, this would call the backend API
       // For now, we'll simulate a successful login
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
         username: username,
         email: `${username}@example.com`,
       };
-      const mockToken = "mock-jwt-token-" + Date.now();
+      const mockToken = `mock-jwt-token-${Date.now()}`;
 
       await AsyncStorage.setItem("user", JSON.stringify(mockUser));
       await AsyncStorage.setItem("token", mockToken);
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, email, password) => {
+  const register = async (username, email, _password) => {
     try {
       // In a real app, this would call the backend API
       const mockUser = {
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
         username,
         email,
       };
-      const mockToken = "mock-jwt-token-" + Date.now();
+      const mockToken = `mock-jwt-token-${Date.now()}`;
 
       await AsyncStorage.setItem("user", JSON.stringify(mockUser));
       await AsyncStorage.setItem("token", mockToken);

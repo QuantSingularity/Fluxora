@@ -1,9 +1,8 @@
-import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Provider as PaperProvider } from "react-native-paper";
-import { HomeScreen } from "../../screens/HomeScreen";
-import { AuthProvider } from "../../contexts/AuthContext";
 import * as api from "../../api/api";
+import { AuthProvider } from "../../contexts/AuthContext";
+import { HomeScreen } from "../../screens/HomeScreen";
 
 jest.mock("../../api/api");
 

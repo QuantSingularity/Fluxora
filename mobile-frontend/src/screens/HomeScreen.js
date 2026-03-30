@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  View,
-  StyleSheet,
-  ScrollView,
   RefreshControl,
   TextInput as RNTextInput,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import {
-  Appbar,
-  Card,
-  Text,
-  Button,
   ActivityIndicator,
-  Title,
-  Paragraph,
-  useTheme,
-  Portal,
+  Appbar,
+  Button,
+  Card,
   Dialog,
+  Paragraph,
+  Portal,
   Surface,
+  Text,
+  Title,
+  useTheme,
 } from "react-native-paper";
-import { useAuth } from "../contexts/AuthContext";
 import { getHealth, getSummary } from "../api/api";
+import { useAuth } from "../contexts/AuthContext";
 
 export const HomeScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -73,7 +73,7 @@ export const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -84,7 +84,7 @@ export const HomeScreen = ({ navigation }) => {
     try {
       await logout();
       navigation.navigate("Login");
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to logout. Please try again.");
       setErrorVisible(true);
     }

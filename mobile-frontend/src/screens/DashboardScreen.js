@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import {
-  Appbar,
-  Card,
-  Text,
-  Button,
   ActivityIndicator,
-  useTheme,
-  Portal,
+  Appbar,
+  Button,
+  Card,
   Dialog,
   Paragraph,
-  Title,
+  Portal,
   Subheading,
+  Text,
+  useTheme,
 } from "react-native-paper";
 import { getHealth, getSummary } from "../api/api"; // Import getSummary
 

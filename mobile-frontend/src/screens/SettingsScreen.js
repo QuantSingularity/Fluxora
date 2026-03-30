@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import {
   Appbar,
-  List,
-  Switch,
-  Divider,
-  Card,
-  Title,
-  Paragraph,
-  useTheme,
-  Dialog,
-  Portal,
   Button,
+  Card,
+  Dialog,
+  Divider,
+  List,
+  Paragraph,
+  Portal,
+  Switch,
   TextInput,
+  Title,
+  useTheme,
 } from "react-native-paper";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuth } from "../contexts/AuthContext";
 import { APP_CONFIG } from "../constants/config";
+import { useAuth } from "../contexts/AuthContext";
 
 const SettingsScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -31,7 +31,7 @@ const SettingsScreen = ({ navigation }) => {
   // Load settings from storage on mount
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   const loadSettings = async () => {
     try {

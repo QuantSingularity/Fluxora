@@ -1,8 +1,8 @@
+import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 import theme from "./theme.js";
 import "./index.css";
 
@@ -13,7 +13,7 @@ class ErrorBoundary extends React.Component {
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(_error) {
     return { hasError: true };
   }
 

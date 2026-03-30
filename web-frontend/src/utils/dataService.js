@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Mock data service for development and production
 const mockDataService = {

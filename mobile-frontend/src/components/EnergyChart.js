@@ -1,11 +1,9 @@
-import React from "react";
-import { View, Dimensions, StyleSheet } from "react-native";
+import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
-  LineChart as RNLineChart,
   BarChart as RNBarChart,
+  LineChart as RNLineChart,
 } from "react-native-chart-kit";
-import { Card, Title, Text, useTheme } from "react-native-paper";
-import { TouchableOpacity } from "react-native";
+import { Card, Text, Title, useTheme } from "react-native-paper";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -22,7 +20,7 @@ export const EnergyChart = ({
 }) => {
   const theme = useTheme();
 
-  if (!data || !data.consumption || data.consumption.length === 0) {
+  if (!data?.consumption || data.consumption.length === 0) {
     return (
       <Card style={styles.card}>
         <Card.Content>

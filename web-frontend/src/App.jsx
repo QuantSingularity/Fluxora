@@ -1,9 +1,9 @@
 import React from "react";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+import Analytics from "./pages/Analytics";
 import Dashboard from "./pages/Dashboard";
 import Predictions from "./pages/Predictions";
-import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 
 const App = () => {

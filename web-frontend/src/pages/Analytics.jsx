@@ -1,35 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { useDataService } from "../utils/dataService";
 import {
   Box,
-  Typography,
   Card,
   CardContent,
+  CircularProgress,
+  Divider,
   Grid,
   Paper,
-  Tabs,
   Tab,
-  Divider,
+  Tabs,
+  Typography,
   useTheme,
-  Skeleton,
-  CircularProgress,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import {
-  BarChart,
   Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
   Scatter,
   ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
   ZAxis,
 } from "recharts";
 
@@ -115,7 +113,7 @@ const Analytics = () => {
     loadData();
   }, []);
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (_event, newValue) => {
     setTabValue(newValue);
   };
 
@@ -300,7 +298,7 @@ const Analytics = () => {
                             `${name} ${(percent * 100).toFixed(0)}%`
                           }
                         >
-                          {data.deviceData.map((entry, index) => (
+                          {data.deviceData.map((_entry, index) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={COLORS[index % COLORS.length]}

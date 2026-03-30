@@ -1,45 +1,45 @@
-import React, { useState, useEffect } from "react";
-import { useDataService } from "../utils/dataService";
+import {
+  CalendarToday as CalendarIcon,
+  Send as SendIcon,
+  Timeline as TimelineIcon,
+} from "@mui/icons-material";
 import {
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
-  Grid,
-  TextField,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Chip,
+  CircularProgress,
   Divider,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
+  TextField,
+  Typography,
   useTheme,
-  CircularProgress,
-  Skeleton,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import {
-  Timeline as TimelineIcon,
-  CalendarToday as CalendarIcon,
-  Send as SendIcon,
-} from "@mui/icons-material";
-import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
+import { useDataService } from "../utils/dataService";
 
 const Predictions = () => {
   const theme = useTheme();
@@ -47,7 +47,7 @@ const Predictions = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [predictionData, setPredictionData] = useState([]);
-  const [meterIds, setMeterIds] = useState(["meter_001", "meter_002"]);
+  const [meterIds, _setMeterIds] = useState(["meter_001", "meter_002"]);
   const [selectedMeters, setSelectedMeters] = useState(["meter_001"]);
   const [dateRange, setDateRange] = useState({
     start: "2023-04-14",
@@ -295,7 +295,7 @@ const Predictions = () => {
                     label={selectedMeters.join(", ")}
                     size="small"
                     sx={{
-                      backgroundColor: theme.palette.primary.light + "20",
+                      backgroundColor: `${theme.palette.primary.light}20`,
                       color: theme.palette.primary.main,
                     }}
                   />
@@ -395,7 +395,7 @@ const Predictions = () => {
                           label="95%"
                           size="small"
                           sx={{
-                            backgroundColor: theme.palette.success.light + "20",
+                            backgroundColor: `${theme.palette.success.light}20`,
                             color: theme.palette.success.main,
                           }}
                         />

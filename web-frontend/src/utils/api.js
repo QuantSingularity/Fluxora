@@ -34,7 +34,7 @@ const api = {
     try {
       const response = await apiClient.get("/health");
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       console.error("Health check failed, using mock data");
       return mockDataService.getHealthStatus();
     }
@@ -47,7 +47,7 @@ const api = {
     try {
       const response = await apiClient.post("/api/v1/predict", params);
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       console.error("Predictions API failed, using mock data");
       return mockDataService.generatePredictionData(24);
     }
@@ -62,7 +62,7 @@ const api = {
         params: { start_date: startDate, end_date: endDate, meter_id: meterId },
       });
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       console.error("Historical data API failed, using mock data");
       return mockDataService.generateEnergyData(24);
     }
@@ -78,7 +78,7 @@ const api = {
     try {
       const response = await apiClient.get("/api/v1/analytics", { params });
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       console.error("Analytics API failed, using mock data");
       return {
         monthly: mockDataService.generateEnergyData(12),

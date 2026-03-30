@@ -1,40 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { useDataService } from "../utils/dataService";
 import {
+  Delete as DeleteIcon,
+  Language as LanguageIcon,
+  Notifications as NotificationsIcon,
+  Refresh as RefreshIcon,
+  Save as SaveIcon,
+  Security as SecurityIcon,
+  Storage as StorageIcon,
+  ColorLens as ThemeIcon,
+} from "@mui/icons-material";
+import {
+  Alert,
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
-  Grid,
-  TextField,
-  Button,
-  Switch,
-  FormControlLabel,
   Divider,
+  Grid,
+  IconButton,
   List,
   ListItem,
   ListItemIcon,
-  ListItemText,
   ListItemSecondaryAction,
-  IconButton,
-  Alert,
-  Snackbar,
-  useTheme,
+  ListItemText,
   Skeleton,
+  Snackbar,
+  Switch,
+  TextField,
+  Typography,
+  useTheme,
 } from "@mui/material";
-import {
-  Save as SaveIcon,
-  Notifications as NotificationsIcon,
-  Security as SecurityIcon,
-  Storage as StorageIcon,
-  Language as LanguageIcon,
-  ColorLens as ThemeIcon,
-  Delete as DeleteIcon,
-  Refresh as RefreshIcon,
-} from "@mui/icons-material";
+import { useEffect, useState } from "react";
 
 const Settings = () => {
-  const theme = useTheme();
+  const _theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
     notifications: true,
@@ -96,7 +94,7 @@ const Settings = () => {
   const handleResetApiKey = () => {
     handleSettingChange(
       "apiKey",
-      "sk_test_" + Math.random().toString(36).substring(2, 15),
+      `sk_test_${Math.random().toString(36).substring(2, 15)}`,
     );
     setSnackbar({
       open: true,

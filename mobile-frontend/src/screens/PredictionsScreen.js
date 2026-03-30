@@ -1,15 +1,15 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 import {
-  Appbar,
-  Card,
-  TextInput,
-  Button,
   ActivityIndicator,
-  HelperText,
-  Portal,
+  Appbar,
+  Button,
+  Card,
   Dialog,
+  HelperText,
   Paragraph,
+  Portal,
+  TextInput,
   Title,
   useTheme,
 } from "react-native-paper";
@@ -37,7 +37,7 @@ const PredictionsScreen = ({ navigation }) => {
     try {
       JSON.parse(text);
       setContextError(null);
-    } catch (e) {
+    } catch (_e) {
       setContextError("Invalid JSON format");
     }
   };
@@ -53,7 +53,7 @@ const PredictionsScreen = ({ navigation }) => {
     try {
       parsedContext = JSON.parse(contextInput);
       setContextError(null);
-    } catch (e) {
+    } catch (_e) {
       setContextError("Invalid JSON format");
       setError("Context Features must be a valid JSON object.");
       setErrorVisible(true);
@@ -170,7 +170,7 @@ const PredictionsScreen = ({ navigation }) => {
                       {pred.toFixed(4)}
                     </Text>
                   </Paragraph>
-                  {confidenceIntervals && confidenceIntervals[index] && (
+                  {confidenceIntervals?.[index] && (
                     <Paragraph style={styles.confidenceText}>
                       (95% CI: {confidenceIntervals[index][0].toFixed(4)} -{" "}
                       {confidenceIntervals[index][1].toFixed(4)})

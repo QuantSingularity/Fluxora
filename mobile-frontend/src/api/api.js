@@ -77,7 +77,7 @@ export const postPredictions = async (payload) => {
   } catch (error) {
     console.error("Error posting predictions:", error);
 
-    if (error.response && error.response.data && error.response.data.detail) {
+    if (error.response?.data?.detail) {
       throw new Error(
         `Prediction failed: ${JSON.stringify(error.response.data.detail)}`,
       );

@@ -5,7 +5,7 @@
  * @returns {string} Formatted number string
  */
 export const formatNumber = (num, decimals = 2) => {
-  if (num === null || num === undefined || isNaN(num)) {
+  if (num === null || num === undefined || Number.isNaN(num)) {
     return "N/A";
   }
   return Number(num).toFixed(decimals);
@@ -22,7 +22,7 @@ export const formatDate = (date, format = "short") => {
 
   const d = typeof date === "string" ? new Date(date) : date;
 
-  if (isNaN(d.getTime())) {
+  if (Number.isNaN(d.getTime())) {
     return "Invalid Date";
   }
 
@@ -67,7 +67,7 @@ export const calculatePercentageChange = (oldValue, newValue) => {
 export const truncateText = (text, maxLength = 50) => {
   if (!text) return "";
   if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength - 3) + "...";
+  return `${text.substring(0, maxLength - 3)}...`;
 };
 
 /**
@@ -136,7 +136,7 @@ export const formatFileSize = (bytes) => {
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  return `${Math.round((bytes / k ** i) * 100) / 100} ${sizes[i]}`;
 };
 
 /**

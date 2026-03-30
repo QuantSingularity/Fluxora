@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  View,
-  StyleSheet,
   Dimensions,
-  ScrollView,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
+import { BarChart, LineChart } from "react-native-chart-kit";
 import {
+  ActivityIndicator,
   Appbar,
   Card,
+  DataTable,
+  Paragraph,
   Text,
   Title,
-  Paragraph,
-  ActivityIndicator,
   useTheme,
-  DataTable,
 } from "react-native-paper";
-import { LineChart, BarChart } from "react-native-chart-kit";
 import { getHistoricalData, getModelMetrics } from "../api/api";
 
 const screenWidth = Dimensions.get("window").width;
@@ -52,7 +52,7 @@ const AnalyticsScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const onRefresh = () => {
     setRefreshing(true);

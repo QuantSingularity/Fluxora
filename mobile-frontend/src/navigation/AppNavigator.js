@@ -1,7 +1,6 @@
-import React from "react";
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import DashboardScreen from "../screens/DashboardScreen";
 import AnalyticsScreen from "../screens/AnalyticsScreen";
+import DashboardScreen from "../screens/DashboardScreen";
 import PredictionsScreen from "../screens/PredictionsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 

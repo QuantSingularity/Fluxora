@@ -1,41 +1,40 @@
-import React, { useEffect, useState } from "react";
-import { useDataService } from "../utils/dataService";
+import {
+  Bolt as BoltIcon,
+  MoreVert as MoreVertIcon,
+  Speed as SpeedIcon,
+  Thermostat as ThermostatIcon,
+  TrendingDown as TrendingDownIcon,
+  TrendingUp as TrendingUpIcon,
+  WaterDrop as WaterIcon,
+} from "@mui/icons-material";
 import {
   Box,
-  Grid,
-  Paper,
-  Typography,
   Card,
   CardContent,
   CardHeader,
-  IconButton,
-  Divider,
-  useTheme,
-  Skeleton,
-  CircularProgress,
   Chip,
+  CircularProgress,
+  Divider,
+  Grid,
+  IconButton,
+  Skeleton,
+  Typography,
+  useTheme,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import {
-  MoreVert as MoreVertIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  Bolt as BoltIcon,
-  WaterDrop as WaterIcon,
-  Thermostat as ThermostatIcon,
-  Speed as SpeedIcon,
-} from "@mui/icons-material";
-import {
-  AreaChart,
   Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
+import { useDataService } from "../utils/dataService";
 
 // Energy source data
 const sourceData = [
@@ -171,7 +170,7 @@ const Dashboard = () => {
                   </Typography>
                   <Box
                     sx={{
-                      backgroundColor: theme.palette.primary.light + "20",
+                      backgroundColor: `${theme.palette.primary.light}20`,
                       borderRadius: "50%",
                       width: 40,
                       height: 40,
@@ -222,7 +221,7 @@ const Dashboard = () => {
                   </Typography>
                   <Box
                     sx={{
-                      backgroundColor: theme.palette.secondary.light + "20",
+                      backgroundColor: `${theme.palette.secondary.light}20`,
                       borderRadius: "50%",
                       width: 40,
                       height: 40,
@@ -266,7 +265,7 @@ const Dashboard = () => {
                   </Typography>
                   <Box
                     sx={{
-                      backgroundColor: theme.palette.warning.light + "20",
+                      backgroundColor: `${theme.palette.warning.light}20`,
                       borderRadius: "50%",
                       width: 40,
                       height: 40,
@@ -319,7 +318,7 @@ const Dashboard = () => {
                   </Typography>
                   <Box
                     sx={{
-                      backgroundColor: theme.palette.info.light + "20",
+                      backgroundColor: `${theme.palette.info.light}20`,
                       borderRadius: "50%",
                       width: 40,
                       height: 40,
@@ -439,7 +438,7 @@ const Dashboard = () => {
                           `${name} ${(percent * 100).toFixed(0)}%`
                         }
                       >
-                        {sourceData.map((entry, index) => (
+                        {sourceData.map((_entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}

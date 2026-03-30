@@ -1,27 +1,27 @@
-import React, { useState } from "react";
 import {
-  AppBar,
-  Toolbar,
-  IconButton,
-  Typography,
-  Badge,
-  Avatar,
-  Box,
-  Menu,
-  MenuItem,
-  Tooltip,
-  InputBase,
-  alpha,
-  useTheme,
-} from "@mui/material";
-import {
+  AccountCircle,
+  ExitToApp as LogoutIcon,
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
   Search as SearchIcon,
-  AccountCircle,
   Settings as SettingsIcon,
-  ExitToApp as LogoutIcon,
 } from "@mui/icons-material";
+import {
+  AppBar,
+  Avatar,
+  alpha,
+  Badge,
+  Box,
+  IconButton,
+  InputBase,
+  Menu,
+  MenuItem,
+  Toolbar,
+  Tooltip,
+  Typography,
+  useTheme,
+} from "@mui/material";
+import { useState } from "react";
 
 const Header = ({ handleDrawerToggle }) => {
   const theme = useTheme();

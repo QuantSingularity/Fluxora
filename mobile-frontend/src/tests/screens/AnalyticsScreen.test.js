@@ -1,8 +1,7 @@
-import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, waitFor } from "@testing-library/react-native";
 import { Provider as PaperProvider } from "react-native-paper";
-import AnalyticsScreen from "../../screens/AnalyticsScreen";
 import * as api from "../../api/api";
+import AnalyticsScreen from "../../screens/AnalyticsScreen";
 
 jest.mock("../../api/api");
 
