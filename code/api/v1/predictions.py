@@ -10,9 +10,13 @@ from backend.dependencies import get_db
 from backend.security import get_current_active_user
 from schemas.user import User
 from data.features.feature_engineering import preprocess_data_for_model
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 MODEL_PATH = os.path.join(os.getcwd(), "fluxora_model.joblib")
 

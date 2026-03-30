@@ -1,10 +1,11 @@
+from typing import Any
 import os
 import sys
 import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from fluxora.core.metrics import MetricsCollector
+from code.core.metrics import MetricsCollector
 
 
 class TestMetrics(unittest.TestCase):

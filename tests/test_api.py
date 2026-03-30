@@ -3,6 +3,7 @@ API endpoint tests for Fluxora backend.
 """
 
 import pytest
+from typing import Any
 from fastapi import status
 
 

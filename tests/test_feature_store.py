@@ -5,7 +5,8 @@ Unit tests for the feature store implementation.
 from datetime import datetime, timedelta
 import pandas as pd
 import pytest
-from fluxora.data.feature_store import FeatureStoreClient
+from typing import Any
+from code.data.feature_store import FeatureStoreClient
 
 
 @pytest.fixture

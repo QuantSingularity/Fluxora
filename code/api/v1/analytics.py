@@ -1,5 +1,5 @@
 from typing import Annotated, List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -8,10 +8,13 @@ from backend.security import get_current_active_user
 from crud.data import get_data_by_time_range
 from schemas.user import User
 from models.data import EnergyData
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 class AnalyticsPoint(BaseModel):

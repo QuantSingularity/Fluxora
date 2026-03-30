@@ -1,3 +1,5 @@
+from typing import Any
+
 """
 Unit tests for the model training logic.
 """
@@ -6,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-from fluxora.models.train import (
+from code.models.train import (
     objective,
     prepare_training_data,
     train_lstm_model,

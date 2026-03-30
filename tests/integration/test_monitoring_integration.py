@@ -1,17 +1,21 @@
+from typing import Any
 import os
 import sys
 import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from fluxora.core.health_check import DependencyStatus, HealthCheck, HealthStatus
-from fluxora.core.logging_framework import (
-    clear_request_context,
-    set_request_context,
-    setup_logging,
+from code.core.health_check import DependencyStatus, HealthCheck, HealthStatus
+from code.core.metrics import MetricsCollector
+from code.core.tracing import TracingManager
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-from fluxora.core.metrics import MetricsCollector
-from fluxora.core.tracing import TracingManager
+logger = logging.getLogger(__name__)
 
 
 class TestMonitoringIntegration(unittest.TestCase):

@@ -2,9 +2,13 @@ import os
 from typing import Any
 import numpy as np
 import pandas as pd
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def generate_mock_data(

@@ -201,7 +201,7 @@ import sys
 import pandas as pd
 from fastapi import FastAPI
 
-from core.logging_framework import get_logger
+import logging
 ```
 
 **Type Hints:**

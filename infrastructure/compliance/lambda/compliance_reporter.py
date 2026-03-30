@@ -4,9 +4,14 @@ import json
 import os
 from datetime import datetime
 import boto3
-from core.logging import get_logger
+import logging
+from typing import Any
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def lambda_handler(event: Any, context: Any) -> Any:

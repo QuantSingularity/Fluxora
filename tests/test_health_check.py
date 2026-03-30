@@ -1,3 +1,4 @@
+from typing import Any
 import os
 import sys
 import unittest
@@ -6,7 +7,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from fluxora.core.health_check import (
+from code.core.health_check import (
     DependencyStatus,
     HealthCheck,
     HealthStatus,

@@ -7,9 +7,14 @@ import os
 from typing import Any, Tuple
 from datetime import datetime, timedelta
 import numpy as np
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 MODEL_PATH = os.path.join(os.getcwd(), "fluxora_model.joblib")
 
 

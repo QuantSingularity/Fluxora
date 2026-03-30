@@ -1,9 +1,13 @@
 import os
 import requests
 from fastapi import FastAPI
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def register_service(app: FastAPI, service_name: str, service_version: str) -> None:

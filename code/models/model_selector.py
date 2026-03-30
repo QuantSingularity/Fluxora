@@ -2,9 +2,13 @@ import os
 from typing import Any
 import tensorflow as tf
 import xgboost as xgb
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def get_latest_model(model_type: str) -> Any:

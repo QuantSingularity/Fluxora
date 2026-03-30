@@ -1,10 +1,12 @@
+from typing import Any
+
 """
 Model tests for Fluxora backend.
 """
 
 from datetime import datetime
 import pytest
-from fluxora.models.user import User
+from code.models.user import User
 
 
 def test_user_model_creation(db_session: Any) -> Any:

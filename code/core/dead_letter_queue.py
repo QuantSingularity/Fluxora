@@ -10,9 +10,13 @@ from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text, create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-from core.logging_framework import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Database setup
 DATABASE_URL = "sqlite:///./dlq.db"  # Use PostgreSQL in production
