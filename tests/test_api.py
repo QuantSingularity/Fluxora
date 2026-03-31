@@ -2,8 +2,9 @@
 API endpoint tests for Fluxora backend.
 """
 
-import pytest
 from typing import Any
+
+import pytest
 from fastapi import status
 
 

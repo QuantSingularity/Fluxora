@@ -1,8 +1,9 @@
 from typing import Any
+
+from api.v1 import analytics, auth, data, predictions
+from backend.database import init_db
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database import init_db
-from api.v1 import auth, data, analytics, predictions
 
 # Initialize database
 init_db()

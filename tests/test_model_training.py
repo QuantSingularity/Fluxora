@@ -4,10 +4,6 @@ from typing import Any
 Unit tests for the model training logic.
 """
 
-from unittest.mock import MagicMock, patch
-import numpy as np
-import pandas as pd
-import pytest
 from code.models.train import (
     objective,
     prepare_training_data,
@@ -15,6 +11,11 @@ from code.models.train import (
     train_model,
     train_xgboost_model,
 )
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pandas as pd
+import pytest
 
 
 @pytest.fixture

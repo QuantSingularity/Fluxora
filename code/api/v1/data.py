@@ -1,12 +1,13 @@
-from typing import Annotated, List, Any
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import Annotated, Any, List
+
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
-from crud.data import create_data_record, get_data_records, get_data_by_time_range
+from crud.data import create_data_record, get_data_by_time_range, get_data_records
+from fastapi import APIRouter, Depends, HTTPException
 from schemas.data import EnergyData, EnergyDataCreate
 from schemas.user import User
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/data", tags=["data"])
 

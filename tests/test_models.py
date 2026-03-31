@@ -4,9 +4,10 @@ from typing import Any
 Model tests for Fluxora backend.
 """
 
-from datetime import datetime
-import pytest
 from code.models.user import User
+from datetime import datetime
+
+import pytest
 
 
 def test_user_model_creation(db_session: Any) -> Any:

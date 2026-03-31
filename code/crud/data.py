@@ -1,8 +1,9 @@
+from datetime import datetime
 from typing import Any
-from sqlalchemy.orm import Session
+
 from models.data import EnergyData
 from schemas.data import EnergyDataCreate
-from datetime import datetime
+from sqlalchemy.orm import Session
 
 
 def get_data_records(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> Any:

@@ -1,5 +1,6 @@
 import time
 from typing import Any, Callable
+
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 

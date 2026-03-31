@@ -1,8 +1,9 @@
 import os
 from typing import Any
+
+from models.base import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models.base import Base
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fluxora.db")
 

@@ -1,16 +1,17 @@
-from typing import Annotated, List, Dict, Any
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-import joblib
+import logging
 import os
-import pandas as pd
+from datetime import datetime, timedelta
+from typing import Annotated, Any, Dict, List
+
+import joblib
 import numpy as np
+import pandas as pd
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
-from schemas.user import User
 from data.features.feature_engineering import preprocess_data_for_model
-import logging
+from fastapi import APIRouter, Depends
+from schemas.user import User
+from sqlalchemy.orm import Session
 
 logging.basicConfig(
     level=logging.INFO,

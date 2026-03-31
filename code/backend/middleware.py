@@ -1,4 +1,5 @@
-from typing import Callable, Awaitable
+from typing import Awaitable, Callable
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware

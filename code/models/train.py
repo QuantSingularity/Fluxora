@@ -1,13 +1,14 @@
+import logging
+import os
+from datetime import datetime, timedelta
+from typing import Any, Tuple
+
+import joblib
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
-import joblib
-import os
-from typing import Any, Tuple
-from datetime import datetime, timedelta
-import numpy as np
-import logging
+from sklearn.model_selection import train_test_split
 
 logging.basicConfig(
     level=logging.INFO,

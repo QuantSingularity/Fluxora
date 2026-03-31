@@ -2,11 +2,12 @@
 Unit tests for the feature store implementation.
 """
 
+from code.data.feature_store import FeatureStoreClient
 from datetime import datetime, timedelta
+from typing import Any
+
 import pandas as pd
 import pytest
-from typing import Any
-from code.data.feature_store import FeatureStoreClient
 
 
 @pytest.fixture

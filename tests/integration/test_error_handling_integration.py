@@ -1,18 +1,15 @@
-from typing import Any
 import os
 import sys
 import time
 import unittest
+from typing import Any
 from unittest.mock import Mock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from code.core.circuit_breaker import CircuitBreaker, CircuitState
 from code.core.fallback import DefaultValueFallback, with_fallback
 from code.core.retry import RetryableError, retry
-from code.core.transaction_coordinator import (
-    TransactionCoordinator,
-    TransactionStatus,
-)
+from code.core.transaction_coordinator import TransactionCoordinator, TransactionStatus
 
 
 class TestErrorHandlingIntegration(unittest.TestCase):

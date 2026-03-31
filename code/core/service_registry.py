@@ -1,7 +1,8 @@
+import logging
 import os
+
 import requests
 from fastapi import FastAPI
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

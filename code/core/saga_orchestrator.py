@@ -1,3 +1,4 @@
+import logging
 import time
 import uuid
 from enum import Enum
@@ -6,8 +7,6 @@ from typing import Any, Dict, List, Optional
 import requests
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel
-
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

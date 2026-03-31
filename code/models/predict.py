@@ -1,6 +1,7 @@
 from typing import Any
-from features.feature_store import get_feature_store
+
 import numpy as np
+from features.feature_store import get_feature_store
 
 
 def get_model() -> Any:

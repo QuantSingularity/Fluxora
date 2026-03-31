@@ -4,11 +4,12 @@ from typing import Any
 Common test fixtures for Fluxora backend tests.
 """
 
-import pytest
-from fastapi.testclient import TestClient
 from code.backend.dependencies import get_db
 from code.backend.main import app
 from code.models.base import Base
+
+import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

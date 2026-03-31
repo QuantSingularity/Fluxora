@@ -1,8 +1,9 @@
 from typing import Any
-from sqlalchemy.orm import Session
+
+from backend.security import get_password_hash
 from models.user import User
 from schemas.user import UserCreate
-from backend.security import get_password_hash
+from sqlalchemy.orm import Session
 
 
 def get_user(db: Session, user_id: int) -> Any:

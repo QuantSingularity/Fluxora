@@ -1,5 +1,6 @@
-from typing import Any
 from code.models.train import load_data, prepare_training_data
+from typing import Any
+
 import mlflow
 import numpy as np
 import xgboost as xgb

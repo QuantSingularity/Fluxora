@@ -1,15 +1,14 @@
-from typing import Any
 import os
 import sys
 import unittest
+from typing import Any
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+import logging
 from code.core.health_check import DependencyStatus, HealthCheck, HealthStatus
 from code.core.metrics import MetricsCollector
 from code.core.tracing import TracingManager
-
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

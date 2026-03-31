@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from enum import Enum
@@ -8,9 +9,7 @@ import requests
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, Float, Integer, String, Text, create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
-
-import logging
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 logging.basicConfig(
     level=logging.INFO,

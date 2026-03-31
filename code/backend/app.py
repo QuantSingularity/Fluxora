@@ -1,10 +1,10 @@
-from typing import Dict, Any, List, Tuple
-from core.config import get_config
-from features.build_features import FeaturePipeline
-from models.predict import get_model, predict_with_model
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
+from core.config import get_config
 from fastapi import FastAPI
+from features.build_features import FeaturePipeline
+from models.predict import get_model, predict_with_model
 
 from .schemas import PredictionRequest, PredictionResponse
 

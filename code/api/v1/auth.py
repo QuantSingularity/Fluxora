@@ -1,8 +1,6 @@
-from typing import Annotated, Any
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from typing import Annotated, Any
+
 from backend.dependencies import get_db
 from backend.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -10,7 +8,10 @@ from backend.security import (
     verify_password,
 )
 from crud.user import get_user_by_email
-from schemas.user import Token, UserCreate, User
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from schemas.user import Token, User, UserCreate
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

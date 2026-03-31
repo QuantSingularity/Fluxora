@@ -2,16 +2,17 @@
 Tests for data processing functionality.
 """
 
-import numpy as np
-import pandas as pd
-import pytest
-from typing import Any
 from code.data.processing import (
     extract_features,
     handle_missing_values,
     normalize_features,
     preprocess_data,
 )
+from typing import Any
+
+import numpy as np
+import pandas as pd
+import pytest
 
 
 @pytest.fixture

@@ -1,11 +1,12 @@
 import csv
 import io
 import json
+import logging
 import os
 from datetime import datetime
-import boto3
-import logging
 from typing import Any
+
+import boto3
 
 logging.basicConfig(
     level=logging.INFO,

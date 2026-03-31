@@ -1,18 +1,19 @@
-from typing import Any
 import os
 import sys
 import unittest
+from typing import Any
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from code.core.health_check import (
     DependencyStatus,
     HealthCheck,
     HealthStatus,
     add_health_check_endpoints,
 )
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 class TestHealthCheck(unittest.TestCase):

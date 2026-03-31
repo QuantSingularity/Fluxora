@@ -1,5 +1,7 @@
 from typing import Any
-from sqlalchemy import Column, Integer, String, Boolean
+
+from sqlalchemy import Boolean, Column, Integer, String
+
 from .base import Base
 
 

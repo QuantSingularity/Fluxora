@@ -1,14 +1,15 @@
-from typing import Annotated, List, Optional, Dict, Any
-from fastapi import Depends, HTTPException, status
-from sqlalchemy.orm import Session
+import logging
 from datetime import datetime, timedelta
-from pydantic import BaseModel
+from typing import Annotated, Any, Dict, List, Optional
+
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
 from crud.data import get_data_by_time_range
-from schemas.user import User
+from fastapi import Depends, HTTPException, status
 from models.data import EnergyData
-import logging
+from pydantic import BaseModel
+from schemas.user import User
+from sqlalchemy.orm import Session
 
 logging.basicConfig(
     level=logging.INFO,

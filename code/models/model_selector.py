@@ -1,8 +1,9 @@
+import logging
 import os
 from typing import Any
+
 import tensorflow as tf
 import xgboost as xgb
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

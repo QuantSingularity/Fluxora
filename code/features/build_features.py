@@ -1,7 +1,8 @@
 from typing import Any
-from core.config import get_config
+
 import numpy as np
 import pandas as pd
+from core.config import get_config
 
 
 class FeaturePipeline:

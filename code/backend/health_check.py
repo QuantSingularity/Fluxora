@@ -1,4 +1,5 @@
-from typing import Dict, Any
+from typing import Any, Dict
+
 from core.health_check import (
     check_database_connections,
     check_feature_store_connection,
