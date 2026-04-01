@@ -14,3 +14,11 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def get_db_direct() -> Session:
+    """
+    Returns a database session directly (not as a generator).
+    Caller is responsible for closing the session.
+    """
+    return SessionLocal()

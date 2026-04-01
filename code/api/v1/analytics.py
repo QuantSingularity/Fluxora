@@ -1,11 +1,11 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, List, Optional
 
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
 from crud.data import get_data_by_time_range
-from fastapi import Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from models.data import EnergyData
 from pydantic import BaseModel
 from schemas.user import User
@@ -16,6 +16,8 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 class AnalyticsPoint(BaseModel):
@@ -104,7 +106,7 @@ def get_analytics(
     db: Annotated[Session, Depends(get_db)],
     period: str = "month",
 ) -> Any:
-    end_time = datetime.utcnow()
+    end_time = datetime.now(timezone.utc).replace(tzinfo=None)
     if period == "week":
         start_time = end_time - timedelta(days=7)
     elif period == "month":
@@ -146,8 +148,38 @@ def get_analytics(
     try:
         return calculate_analytics(records, period)
     except ValueError as e:
-        logger.info(f"ValueError calculating analytics: {e}")
+        logger.error(f"ValueError calculating analytics: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         logger.exception("Unexpected error calculating analytics")
         raise HTTPException(status_code=500, detail="Error calculating analytics data.")
+
+
+@router.get("/summary", response_model=Dict[str, Any])
+def get_analytics_summary(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Any:
+    """Returns a high-level summary of the last 30 days."""
+    end_time = datetime.now(timezone.utc).replace(tzinfo=None)
+    start_time = end_time - timedelta(days=30)
+    records = get_data_by_time_range(
+        db, user_id=current_user.id, start_time=start_time, end_time=end_time
+    )
+    if not records:
+        return {
+            "total_consumption_kwh": 0.0,
+            "total_cost_usd": 0.0,
+            "avg_daily_consumption_kwh": 0.0,
+            "record_count": 0,
+        }
+    total_consumption = sum(
+        float(getattr(r, "consumption_kwh", 0.0) or 0.0) for r in records
+    )
+    total_cost = sum(float(getattr(r, "cost_usd", 0.0) or 0.0) for r in records)
+    return {
+        "total_consumption_kwh": round(total_consumption, 2),
+        "total_cost_usd": round(total_cost, 2),
+        "avg_daily_consumption_kwh": round(total_consumption / 30, 2),
+        "record_count": len(records),
+    }

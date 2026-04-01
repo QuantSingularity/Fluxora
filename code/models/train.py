@@ -22,10 +22,26 @@ MODEL_PATH = os.path.join(os.getcwd(), "fluxora_model.joblib")
 def load_data_from_db(db_session: Any = None) -> pd.DataFrame:
     """
     Loads all energy data from the database into a pandas DataFrame.
-
-    NOTE: In a real application, this would query the database.
-    For now, we'll create dummy data for demonstration.
+    Falls back to generating synthetic data when no session is provided.
     """
+    if db_session is not None:
+        try:
+            from models.data import EnergyData
+
+            records = db_session.query(EnergyData).order_by(EnergyData.timestamp).all()
+            if records:
+                rows = [
+                    {
+                        "timestamp": r.timestamp,
+                        "consumption_kwh": float(r.consumption_kwh),
+                        "user_id": r.user_id,
+                    }
+                    for r in records
+                ]
+                return pd.DataFrame(rows)
+        except Exception as e:
+            logger.warning(f"Could not load data from DB, using synthetic: {e}")
+
     start_time = datetime.now() - timedelta(days=30)
     timestamps = [start_time + timedelta(hours=i) for i in range(30 * 24)]
     time_series_index = np.arange(len(timestamps))
@@ -43,14 +59,8 @@ def load_data_from_db(db_session: Any = None) -> pd.DataFrame:
 def train_model(df: pd.DataFrame) -> Tuple[RandomForestRegressor, dict]:
     """
     Trains a RandomForestRegressor model on the processed data.
-
-    Args:
-        df: Raw DataFrame containing the time-series data.
-
-    Returns:
-        A tuple containing the trained model and a dictionary of evaluation metrics.
     """
-    from ..data.features.feature_engineering import preprocess_data_for_model
+    from data.features.feature_engineering import preprocess_data_for_model
 
     processed_df = preprocess_data_for_model(df.copy())
     target_col = "consumption_kwh"
@@ -80,13 +90,14 @@ def train_model(df: pd.DataFrame) -> Tuple[RandomForestRegressor, dict]:
     return (model, metrics)
 
 
-def save_model(model: RandomForestRegressor, path: str = MODEL_PATH) -> Any:
+def save_model(model: RandomForestRegressor, path: str = MODEL_PATH) -> None:
     """Saves the trained model to a file."""
+    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
     joblib.dump(model, path)
     logger.info(f"Model saved to {path}")
 
 
-def run_training_pipeline(db_session: Any = None) -> Any:
+def run_training_pipeline(db_session: Any = None) -> dict:
     """Full pipeline to load data, train model, and save it."""
     logger.info("Starting training pipeline...")
     data_df = load_data_from_db(db_session)

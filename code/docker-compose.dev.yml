@@ -1,0 +1,26 @@
+version: "3.9"
+
+# Development override – hot-reload, SQLite, no Postgres required.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      target: runtime
+    environment:
+      - ENV=development
+      - DATABASE_URL=sqlite:///./fluxora.db
+      - LOG_LEVEL=DEBUG
+      - API_WORKERS=1
+    volumes:
+      - .:/app # mount source for hot-reload
+    command: >
+      python -m uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    depends_on: [] # skip postgres in dev
+
+  db:
+    profiles:
+      - postgres # only start when explicitly requested

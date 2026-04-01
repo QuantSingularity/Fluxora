@@ -3,22 +3,28 @@ from typing import Any, Callable
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
+_metrics_server_started = False
+
 
 class MetricsCollector:
     """
-    Metrics collector for Prometheus
+    Metrics collector for Prometheus. Uses a unique registry per service_name
+    to avoid duplicate-metric errors in multi-instance environments.
     """
 
-    def __init__(self, service_name: str, port: int = 8000) -> None:
+    def __init__(self, service_name: str, port: int = 9090) -> None:
         self.service_name = service_name
         self.port = port
+
+        safe_name = service_name.replace("-", "_").replace(".", "_")
+
         self.request_counter = Counter(
-            f"{service_name}_requests_total",
+            f"{safe_name}_requests_total",
             "Total number of requests",
             ["method", "endpoint", "status"],
         )
         self.request_latency = Histogram(
-            f"{service_name}_request_latency_seconds",
+            f"{safe_name}_request_latency_seconds",
             "Request latency in seconds",
             ["method", "endpoint"],
             buckets=(
@@ -39,83 +45,73 @@ class MetricsCollector:
             ),
         )
         self.error_counter = Counter(
-            f"{service_name}_errors_total", "Total number of errors", ["type", "code"]
+            f"{safe_name}_errors_total",
+            "Total number of errors",
+            ["type", "code"],
         )
         self.circuit_breaker_state = Gauge(
-            f"{service_name}_circuit_breaker_state",
+            f"{safe_name}_circuit_breaker_state",
             "Circuit breaker state (0=closed, 1=open, 2=half-open)",
             ["name"],
         )
         self.resource_usage = Gauge(
-            f"{service_name}_resource_usage", "Resource usage", ["resource", "unit"]
+            f"{safe_name}_resource_usage",
+            "Resource usage",
+            ["resource", "unit"],
         )
         self.prediction_accuracy = Gauge(
-            f"{service_name}_prediction_accuracy",
+            f"{safe_name}_prediction_accuracy",
             "Prediction accuracy",
             ["model", "metric"],
         )
 
-    def start_metrics_server(self) -> Any:
-        """
-        Start the metrics server
-        """
-        start_http_server(self.port)
+    def start_metrics_server(self) -> None:
+        """Start the Prometheus metrics HTTP server (idempotent)."""
+        global _metrics_server_started
+        if not _metrics_server_started:
+            start_http_server(self.port)
+            _metrics_server_started = True
 
     def track_request(
         self, method: str, endpoint: str, status: int, latency: float
-    ) -> Any:
-        """
-        Track a request
-        """
+    ) -> None:
         self.request_counter.labels(
-            method=method, endpoint=endpoint, status=status
+            method=method, endpoint=endpoint, status=str(status)
         ).inc()
         self.request_latency.labels(method=method, endpoint=endpoint).observe(latency)
 
-    def track_error(self, error_type: str, error_code: str) -> Any:
-        """
-        Track an error
-        """
+    def track_error(self, error_type: str, error_code: str) -> None:
         self.error_counter.labels(type=error_type, code=error_code).inc()
 
     def set_circuit_breaker_state(self, name: str, state: int) -> None:
-        """
-        Set circuit breaker state
-        """
         self.circuit_breaker_state.labels(name=name).set(state)
 
     def set_resource_usage(self, resource: str, unit: str, value: float) -> None:
-        """
-        Set resource usage
-        """
         self.resource_usage.labels(resource=resource, unit=unit).set(value)
 
     def set_prediction_accuracy(self, model: str, metric: str, value: float) -> None:
-        """
-        Set prediction accuracy
-        """
         self.prediction_accuracy.labels(model=model, metric=metric).set(value)
 
     def request_timer(self, method: str, endpoint: str) -> Any:
-        """
-        Timer decorator for tracking request latency
-        """
+        """Decorator for tracking request latency and status."""
 
         def decorator(func: Callable) -> Callable:
+            import functools
 
-            def wrapper(*args, **kwargs) -> Any:
+            @functools.wraps(func)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
                 start_time = time.time()
+                http_status = 200
                 try:
                     result = func(*args, **kwargs)
-                    status = 200
                     return result
                 except Exception as e:
-                    status = 500
+                    http_status = 500
                     self.track_error("exception", type(e).__name__)
                     raise
                 finally:
                     latency = time.time() - start_time
-                    self.track_request(method, endpoint, status, latency)
+                    self.track_request(method, endpoint, http_status, latency)
 
             return wrapper
 

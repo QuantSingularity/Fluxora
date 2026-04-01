@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+  # ── Main API ────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: fluxora_api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+      - "${METRICS_PORT:-9090}:9090"
+    environment:
+      - ENV=${ENV:-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./fluxora.db}
+      - SECRET_KEY=${SECRET_KEY:-CHANGE_ME_BEFORE_PRODUCTION_USE_MINIMUM_32_CHARS}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=${API_WORKERS:-2}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MODEL_PATH=${MODEL_PATH:-./fluxora_model.joblib}
+      - MODEL_VERSION=${MODEL_VERSION:-0.1.0}
+      - MODEL_TYPE=${MODEL_TYPE:-random_forest}
+      - FEATURE_STORE_PATH=${FEATURE_STORE_PATH:-./config/feature_store}
+      - MONITORING_ENABLED=${MONITORING_ENABLED:-true}
+      - METRICS_PORT=9090
+      - DRIFT_THRESHOLD=${DRIFT_THRESHOLD:-0.25}
+    volumes:
+      - fluxora_data:/app/data
+      - fluxora_models:/app/models_store
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - fluxora_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── PostgreSQL (production database) ────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: fluxora_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fluxora}
+      POSTGRES_USER: ${POSTGRES_USER:-fluxora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fluxora_secret}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-fluxora} -d ${POSTGRES_DB:-fluxora}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - fluxora_net
+
+  # ── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: fluxora_prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    networks:
+      - fluxora_net
+    profiles:
+      - monitoring
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: fluxora_grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - fluxora_net
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+
+volumes:
+  fluxora_data:
+  fluxora_models:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  fluxora_net:
+    driver: bridge

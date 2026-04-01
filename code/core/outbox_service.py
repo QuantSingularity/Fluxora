@@ -18,9 +18,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database setup
-DATABASE_URL = "sqlite:///./outbox.db"  # Use PostgreSQL in production
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = "sqlite:///./outbox.db"
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -40,7 +39,6 @@ class OutboxMessage(Base):
     retry_count = Column(Integer, default=0)
 
 
-# Create tables
 Base.metadata.create_all(bind=engine)
 
 
@@ -134,10 +132,9 @@ async def process_messages() -> None:
     while True:
         try:
             db = SessionLocal()
-            # Get unprocessed messages
             messages = (
                 db.query(OutboxMessage)
-                .filter(not OutboxMessage.processed)
+                .filter(OutboxMessage.processed == False)  # noqa: E712
                 .order_by(OutboxMessage.created_at)
                 .limit(10)
                 .all()
@@ -145,35 +142,30 @@ async def process_messages() -> None:
 
             for message in messages:
                 try:
-                    # Get service URL from service registry
                     service_url = get_service_url(str(message.destination_service))
                     if not service_url:
                         continue
 
-                    # Send message to destination service
                     payload_data = json.loads(str(message.payload))
                     response = requests.post(
-                        f"{service_url}/messages", json=payload_data
+                        f"{service_url}/messages", json=payload_data, timeout=5
                     )
 
                     if response.status_code == 200:
-                        # Mark message as processed
                         message.processed = True  # type: ignore[assignment]
                         message.processed_at = time.time()  # type: ignore[assignment]
                     else:
-                        # Increment retry count
                         message.retry_count += 1  # type: ignore[assignment]
                 except Exception as e:
-                    logger.info(f"Error processing message {message.id}: {str(e)}")
+                    logger.error(f"Error processing message {message.id}: {str(e)}")
                     message.retry_count += 1  # type: ignore[assignment]
 
             db.commit()
         except Exception as e:
-            logger.info(f"Error in message processor: {str(e)}")
+            logger.error(f"Error in message processor: {str(e)}")
         finally:
             db.close()
 
-        # Sleep before next processing cycle
         await asyncio.sleep(1)
 
 
@@ -183,7 +175,9 @@ def get_service_url(service_name: str) -> Optional[str]:
     """
     try:
         registry_url = "http://service-registry:8500"
-        response = requests.get(f"{registry_url}/v1/catalog/service/{service_name}")
+        response = requests.get(
+            f"{registry_url}/v1/catalog/service/{service_name}", timeout=2
+        )
         if response.status_code == 200:
             services = response.json()
             if services:
@@ -191,7 +185,7 @@ def get_service_url(service_name: str) -> Optional[str]:
                 return f"http://{service['ServiceAddress']}:{service['ServicePort']}"
         return None
     except Exception as e:
-        logger.info(f"Error getting service URL: {str(e)}")
+        logger.warning(f"Error getting service URL: {str(e)}")
         return None
 
 

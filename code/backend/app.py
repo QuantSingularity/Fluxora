@@ -10,15 +10,20 @@ from .schemas import PredictionRequest, PredictionResponse
 
 app = FastAPI(title="Fluxora API", description="Energy prediction API")
 
-# Load configuration
 config = get_config()
 
-# Initialize feature pipeline and model
 feature_pipeline = FeaturePipeline()
-model = get_model()
+_model = None
 
 
-# Register health check router
+def get_cached_model() -> Any:
+    """Lazy-load and cache the model."""
+    global _model
+    if _model is None:
+        _model = get_model()
+    return _model
+
+
 from .health_check import router as health_router
 
 app.include_router(health_router)
@@ -29,18 +34,16 @@ async def predict(payload: PredictionRequest) -> Dict[str, Any]:
     """
     Batch prediction endpoint
     """
-    # Transform input data using feature pipeline
     preprocessed = feature_pipeline.transform(payload)
 
-    # Get predictions from model
+    model = get_cached_model()
     predictions = predict_with_model(model, preprocessed)
 
-    # Calculate confidence intervals (95%)
-    std_dev = (
-        np.std(predictions, axis=0)
-        if len(predictions.shape) > 1
-        else np.std(predictions)
-    )
+    if predictions.ndim > 1 and predictions.shape[0] > 1:
+        std_dev = np.std(predictions, axis=0)
+    else:
+        std_dev = float(np.std(predictions)) if len(predictions) > 1 else 1.0
+
     confidence_intervals: List[Tuple[float, float]] = [
         (float(pred - 1.96 * std_dev), float(pred + 1.96 * std_dev))
         for pred in predictions

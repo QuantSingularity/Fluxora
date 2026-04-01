@@ -1,26 +1,33 @@
+import logging
 import os
-from typing import Any
 
-from models.base import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+logger = logging.getLogger(__name__)
+
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fluxora.db")
 
-# Handle SQLite specific connection args
 connect_args = {}
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def init_db() -> Any:
+def init_db() -> None:
     """Initializes the database by creating all tables."""
-    # Import all models here to ensure they're registered with Base
+    import models.data  # noqa: F401  – registers EnergyData model
+    import models.user  # noqa: F401  – registers User model
+    from models.base import Base
 
     Base.metadata.create_all(bind=engine)
+    logger.info("Database initialised.")
 
 
 if __name__ == "__main__":

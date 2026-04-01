@@ -1,178 +1,178 @@
-# Fluxora Backend
+# Fluxora – Energy Data Management & Prediction API
 
-This is the backend API for the Fluxora energy forecasting and optimization platform.
+A FastAPI-based backend for collecting, storing, analysing, and forecasting energy consumption data.
 
-## Quick Start
+---
 
-### Prerequisites
+## Features
 
-- Python 3.9+
-- pip
+| Area              | Details                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| **Auth**          | JWT-based registration & login (`/v1/auth`)                                  |
+| **Data**          | CRUD for energy readings with time-range queries (`/v1/data`)                |
+| **Predictions**   | ML-driven hourly consumption forecasts (`/v1/predictions`)                   |
+| **Analytics**     | Aggregated weekly / monthly / yearly reports (`/v1/analytics`)               |
+| **ML Pipeline**   | RandomForest training, feature engineering, lag/rolling features             |
+| **Resilience**    | Circuit breaker, exponential-backoff retry, fallback strategies              |
+| **Observability** | Prometheus metrics, structured error responses, request logging              |
+| **Migrations**    | Alembic database migrations                                                  |
+| **Docker**        | Multi-stage Dockerfile + docker-compose (API, Postgres, Prometheus, Grafana) |
+| **Tests**         | pytest suite with in-memory SQLite fixtures                                  |
 
-### Installation & Running
+---
 
-1. **Install dependencies**:
+## Quick Start (local)
+
+```bash
+# 1. Clone and enter the repo
+git clone <repo-url>
+cd fluxora
+
+# 2. Create a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure the app
+cp .env.example .env
+# Edit .env – at minimum set SECRET_KEY to a strong random value:
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# 5. Start the server
+./start.sh
+# or: python -m uvicorn main:app --reload
+```
+
+API docs are available at **http://localhost:8000/docs**
+
+---
+
+## Docker
+
+### Production (PostgreSQL + monitoring)
+
+```bash
+cp .env.example .env   # edit as needed
+docker compose up -d
+```
+
+### Development (SQLite, hot-reload)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+### With monitoring stack
+
+```bash
+docker compose --profile monitoring up -d
+# Grafana → http://localhost:3001  (admin / admin)
+# Prometheus → http://localhost:9091
+```
+
+---
+
+## API Endpoints
+
+### Auth
+
+| Method | Path                | Description         |
+| ------ | ------------------- | ------------------- |
+| `POST` | `/v1/auth/register` | Register a new user |
+| `POST` | `/v1/auth/token`    | Obtain a JWT token  |
+
+### Data
+
+| Method | Path             | Description               |
+| ------ | ---------------- | ------------------------- |
+| `POST` | `/v1/data/`      | Record energy reading     |
+| `GET`  | `/v1/data/`      | List readings (paginated) |
+| `GET`  | `/v1/data/query` | Query by time range       |
+
+### Predictions
+
+| Method | Path                      | Description                        |
+| ------ | ------------------------- | ---------------------------------- |
+| `GET`  | `/v1/predictions/?days=7` | Forecast next N days               |
+| `POST` | `/v1/predictions/train`   | Trigger model training (superuser) |
+
+### Analytics
+
+| Method | Path                          | Description                            |
+| ------ | ----------------------------- | -------------------------------------- |
+| `GET`  | `/v1/analytics/?period=month` | Aggregated analytics (week/month/year) |
+| `GET`  | `/v1/analytics/summary`       | 30-day summary                         |
+
+### System
+
+| Method | Path      | Description            |
+| ------ | --------- | ---------------------- |
+| `GET`  | `/health` | Liveness probe         |
+| `GET`  | `/`       | API info               |
+| `GET`  | `/docs`   | Interactive Swagger UI |
+
+---
+
+## Database Migrations (Alembic)
+
+```bash
+# Generate a new migration after changing models
+alembic revision --autogenerate -m "describe change"
+
+# Apply migrations
+alembic upgrade head
+
+# Roll back one step
+alembic downgrade -1
+```
+
+---
+
+## Running Tests
 
 ```bash
 pip install -r requirements.txt
+pytest -v
 ```
 
-2. **Start the server**:
+---
 
-```bash
-# Simple start
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+## Environment Variables
 
-# Or use the startup script
-./start.sh
+See `.env.example` for the full list. Key variables:
 
-# With auto-reload for development
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
+| Variable       | Default                  | Description             |
+| -------------- | ------------------------ | ----------------------- |
+| `DATABASE_URL` | `sqlite:///./fluxora.db` | SQLAlchemy DB URL       |
+| `SECRET_KEY`   | _(must be set)_          | JWT signing key         |
+| `API_PORT`     | `8000`                   | Server port             |
+| `API_WORKERS`  | `1`                      | Uvicorn workers         |
+| `MODEL_PATH`   | `./fluxora_model.joblib` | Saved model path        |
+| `METRICS_PORT` | `9090`                   | Prometheus metrics port |
+| `LOG_LEVEL`    | `INFO`                   | Logging verbosity       |
 
-3. **Access the API**:
-
-- API Root: http://localhost:8000
-- Interactive Docs: http://localhost:8000/docs
-- Alternative Docs: http://localhost:8000/redoc
-- Health Check: http://localhost:8000/health
+---
 
 ## Project Structure
 
 ```
 code/
-├── api/              # API endpoints
-│   └── v1/          # API version 1
-│       ├── auth.py       # Authentication endpoints
-│       ├── data.py       # Data management endpoints
-│       ├── analytics.py  # Analytics endpoints
-│       └── predictions.py # Prediction endpoints
-├── backend/         # Core backend functionality
-│   ├── app.py           # Legacy app (not used)
-│   ├── database.py      # Database configuration
-│   ├── dependencies.py  # FastAPI dependencies
-│   ├── security.py      # Authentication & security
-│   └── schemas.py       # Request/response schemas
-├── core/            # Core utilities
-│   ├── config.py        # Configuration management
-│   ├── health_check.py  # Health check utilities
-│   └── logging_framework.py # Logging utilities
-├── crud/            # Database operations
-│   ├── user.py          # User CRUD operations
-│   └── data.py          # Energy data CRUD operations
-├── data/            # Data processing
-│   └── features/
-│       └── feature_engineering.py # Feature engineering
-├── features/        # Feature processing
-│   ├── build_features.py    # Feature pipeline
-│   └── feature_store.py     # Feature store
-├── models/          # Database & ML models
-│   ├── base.py          # SQLAlchemy base
-│   ├── user.py          # User model
-│   ├── data.py          # Energy data model
-│   └── predict.py       # Prediction logic
-├── schemas/         # Pydantic schemas
-│   ├── user.py          # User schemas
-│   └── data.py          # Energy data schemas
-├── main.py          # Application entry point
-├── requirements.txt # Python dependencies
-└── start.sh        # Startup script
+├── api/v1/             # Route handlers (auth, data, predictions, analytics)
+├── backend/            # App factory, DB session, security, middleware
+├── core/               # Circuit breaker, retry, config, metrics, tracing
+├── crud/               # Database access layer
+├── data/               # Feature engineering & dataset generation
+├── features/           # Feature pipeline & feature store
+├── migrations/         # Alembic migration scripts
+├── models/             # SQLAlchemy ORM models + ML train/predict
+├── schemas/            # Pydantic request/response schemas
+├── tests/              # pytest test suite
+├── docker/             # Prometheus & Grafana config
+├── Dockerfile
+├── docker-compose.yml
+├── docker-compose.dev.yml
+├── requirements.txt
+└── main.py
 ```
-
-## API Endpoints
-
-### Authentication
-
-- `POST /v1/auth/register` - Register new user
-- `POST /v1/auth/token` - Login and get access token
-
-### Data Management
-
-- `POST /v1/data/` - Create energy data record
-- `GET /v1/data/` - List energy data records
-- `GET /v1/data/query` - Query data by time range
-
-### Analytics
-
-- `GET /v1/analytics/` - Get analytics (week/month/year)
-
-### Predictions
-
-- `GET /v1/predictions/` - Get energy consumption predictions
-
-### System
-
-- `GET /health` - Health check
-- `GET /` - API information
-
-## Configuration
-
-Copy `.env.example` to `.env` and configure:
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-Key configuration variables:
-
-- `DATABASE_URL`: Database connection string (default: SQLite)
-- `SECRET_KEY`: JWT secret key (MUST change in production)
-- `API_PORT`: API server port (default: 8000)
-
-## Database
-
-The application uses SQLite by default for development. For production, configure PostgreSQL:
-
-```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/fluxora
-```
-
-Database tables are automatically created on first startup.
-
-## Development
-
-### Running Tests
-
-```bash
-pytest
-```
-
-### Code Style
-
-The project follows Python best practices with type hints and documentation.
-
-## Troubleshooting
-
-### Import Errors
-
-Make sure you're running from the `code` directory:
-
-```bash
-cd code
-python -m uvicorn main:app
-```
-
-### Database Errors
-
-Delete the SQLite database and restart:
-
-```bash
-rm fluxora.db
-python -m uvicorn main:app
-```
-
-### Port Already in Use
-
-Change the port:
-
-```bash
-python -m uvicorn main:app --port 8001
-```
-
-## Notes
-
-- The application includes mock prediction functionality
-- Authentication uses JWT tokens
-- CORS is configured for common frontend ports
-- Default SQLite database: `fluxora.db`

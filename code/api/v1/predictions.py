@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, List
 
 import joblib
@@ -9,7 +9,7 @@ import pandas as pd
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
 from data.features.feature_engineering import preprocess_data_for_model
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from schemas.user import User
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 MODEL_PATH = os.path.join(os.getcwd(), "fluxora_model.joblib")
 
@@ -29,21 +30,21 @@ def load_model() -> Any:
     try:
         return joblib.load(MODEL_PATH)
     except Exception as e:
-        logger.info(f"Error loading model: {e}")
+        logger.error(f"Error loading model: {e}")
         return None
 
 
 def generate_mock_predictions(days: int) -> List[Dict[str, Any]]:
-    """Generates mock prediction data."""
+    """Generates mock prediction data for when no trained model is available."""
     data = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for i in range(days * 24):
         timestamp = now + timedelta(hours=i)
         hour = timestamp.hour
-        base_load = 50
+        base_load = 50.0
         daily_cycle = np.sin(hour / 24 * 2 * np.pi) * 20
         noise = np.random.normal(0, 5)
-        predicted = base_load + daily_cycle + noise
+        predicted = float(base_load + daily_cycle + noise)
         data.append(
             {
                 "timestamp": timestamp.isoformat(),
@@ -61,22 +62,43 @@ def generate_mock_predictions(days: int) -> List[Dict[str, Any]]:
 def get_predictions(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[Session, Depends(get_db)],
-    days: int = 7,
+    days: int = Query(default=7, ge=1, le=90),
 ) -> Any:
     """
-    Generates energy consumption predictions for the next 'days' ahead.
+    Generates energy consumption predictions for the next N days.
+    Falls back to mock predictions when no trained model or historical
+    data is available.
     """
     model = load_model()
     if model is None:
+        logger.info("No trained model found. Returning mock predictions.")
         return generate_mock_predictions(days)
+
     from crud.data import get_data_records
 
     historical_records = get_data_records(db, user_id=current_user.id, limit=48)
     if not historical_records:
+        logger.info("No historical records found. Returning mock predictions.")
         return generate_mock_predictions(days)
-    historical_df = pd.DataFrame([r.__dict__ for r in historical_records])
+
+    historical_df = pd.DataFrame(
+        [
+            {
+                "timestamp": r.timestamp,
+                "consumption_kwh": float(r.consumption_kwh),
+                "user_id": r.user_id,
+            }
+            for r in historical_records
+            if hasattr(r, "_sa_instance_state")  # only real ORM objects
+        ]
+    )
+
+    if historical_df.empty:
+        return generate_mock_predictions(days)
+
     historical_df["timestamp"] = pd.to_datetime(historical_df["timestamp"])
-    historical_df = historical_df.sort_values("timestamp")
+    historical_df = historical_df.sort_values("timestamp").reset_index(drop=True)
+
     future_timestamps = [
         historical_df["timestamp"].iloc[-1] + timedelta(hours=i)
         for i in range(1, days * 24 + 1)
@@ -90,22 +112,27 @@ def get_predictions(
     )
     full_df = pd.concat([historical_df, future_df], ignore_index=True)
     start_idx = len(historical_df)
+
     for i in range(start_idx, len(full_df)):
         temp_df = preprocess_data_for_model(full_df.iloc[:i].copy())
-        current_features = temp_df.iloc[-1]
+        if temp_df.empty:
+            full_df.loc[i, "consumption_kwh"] = historical_df["consumption_kwh"].mean()
+            continue
+
         target_col = "consumption_kwh"
         features = [
             col
             for col in temp_df.columns
             if col not in [target_col, "timestamp", "user_id"]
         ]
-        X_pred = current_features[features].to_frame().T
-        prediction = model.predict(X_pred)[0]
-        full_df.loc[i, "consumption_kwh"] = prediction
+        X_pred = temp_df[features].iloc[[-1]]
+        prediction = float(model.predict(X_pred)[0])
+        full_df.loc[i, "consumption_kwh"] = max(prediction, 0.0)
+
     predictions_df = full_df.iloc[start_idx:].copy()
     results = []
     for _, row in predictions_df.iterrows():
-        predicted = row["consumption_kwh"]
+        predicted = float(row["consumption_kwh"])
         results.append(
             {
                 "timestamp": row["timestamp"].isoformat(),
@@ -117,3 +144,25 @@ def get_predictions(
             }
         )
     return results
+
+
+@router.post("/train", response_model=Dict[str, Any])
+def trigger_training(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Any:
+    """
+    Triggers model (re-)training using data from the database.
+    Only superusers can call this endpoint.
+    """
+    if not current_user.is_superuser:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superusers can trigger training.",
+        )
+    from models.train import run_training_pipeline
+
+    metrics = run_training_pipeline(db_session=db)
+    return {"status": "trained", "metrics": metrics}
