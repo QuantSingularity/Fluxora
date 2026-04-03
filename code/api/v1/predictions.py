@@ -3,15 +3,21 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, List
 
-import joblib
 import numpy as np
 import pandas as pd
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
 from data.features.feature_engineering import preprocess_data_for_model
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from schemas.user import User
 from sqlalchemy.orm import Session
+
+try:
+    import joblib
+
+    _JOBLIB_AVAILABLE = True
+except ImportError:
+    _JOBLIB_AVAILABLE = False
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,6 +31,8 @@ MODEL_PATH = os.path.join(os.getcwd(), "fluxora_model.joblib")
 
 def load_model() -> Any:
     """Loads the trained model from disk."""
+    if not _JOBLIB_AVAILABLE:
+        return None
     if not os.path.exists(MODEL_PATH):
         return None
     try:
@@ -45,13 +53,14 @@ def generate_mock_predictions(days: int) -> List[Dict[str, Any]]:
         daily_cycle = np.sin(hour / 24 * 2 * np.pi) * 20
         noise = np.random.normal(0, 5)
         predicted = float(base_load + daily_cycle + noise)
+        margin = abs(predicted) * 0.15
         data.append(
             {
                 "timestamp": timestamp.isoformat(),
                 "predicted_consumption": round(predicted, 2),
                 "confidence_interval": {
-                    "lower": round(predicted * 0.85, 2),
-                    "upper": round(predicted * 1.15, 2),
+                    "lower": round(predicted - margin, 2),
+                    "upper": round(predicted + margin, 2),
                 },
             }
         )
@@ -89,7 +98,6 @@ def get_predictions(
                 "user_id": r.user_id,
             }
             for r in historical_records
-            if hasattr(r, "_sa_instance_state")  # only real ORM objects
         ]
     )
 
@@ -133,13 +141,14 @@ def get_predictions(
     results = []
     for _, row in predictions_df.iterrows():
         predicted = float(row["consumption_kwh"])
+        margin = abs(predicted) * 0.10
         results.append(
             {
                 "timestamp": row["timestamp"].isoformat(),
                 "predicted_consumption": round(predicted, 2),
                 "confidence_interval": {
-                    "lower": round(predicted * 0.9, 2),
-                    "upper": round(predicted * 1.1, 2),
+                    "lower": round(predicted - margin, 2),
+                    "upper": round(predicted + margin, 2),
                 },
             }
         )
@@ -156,8 +165,6 @@ def trigger_training(
     Only superusers can call this endpoint.
     """
     if not current_user.is_superuser:
-        from fastapi import HTTPException, status
-
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only superusers can trigger training.",

@@ -1,11 +1,9 @@
 import logging
 import os
 import time
-from typing import Any
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
 
-from api.v1 import analytics, auth, data, predictions
-from backend.database import init_db
-from core.error_middleware import add_error_handlers
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,8 +13,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize database
-init_db()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    from backend.database import init_db
+
+    init_db()
+    logger.info("Application startup complete.")
+    yield
+    logger.info("Application shutdown.")
+
 
 app = FastAPI(
     title="Fluxora API",
@@ -24,6 +30,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Configure CORS from environment variable
@@ -41,6 +48,8 @@ app.add_middleware(
 )
 
 # Register structured error handlers
+from core.error_middleware import add_error_handlers
+
 add_error_handlers(app)
 
 
@@ -58,6 +67,8 @@ async def log_requests(request: Request, call_next: Any) -> Any:
 
 
 # Include API routers
+from api.v1 import analytics, auth, data, predictions
+
 app.include_router(auth.router, prefix="/v1")
 app.include_router(data.router, prefix="/v1")
 app.include_router(analytics.router, prefix="/v1")

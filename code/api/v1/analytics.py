@@ -5,7 +5,7 @@ from typing import Annotated, Any, Dict, List, Optional
 from backend.dependencies import get_db
 from backend.security import get_current_active_user
 from crud.data import get_data_by_time_range
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from models.data import EnergyData
 from pydantic import BaseModel
 from schemas.user import User
@@ -55,8 +55,9 @@ def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str
     df = pd.DataFrame(rows)
     if df.empty or df["timestamp"].isnull().all():
         return []
-    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
     df = df.dropna(subset=["timestamp"]).set_index("timestamp")
+
     if period == "week":
         freq = "D"
     elif period == "month":
@@ -65,6 +66,7 @@ def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str
         freq = "W"
     else:
         raise ValueError("Invalid period: must be 'week', 'month', or 'year'")
+
     agg_map = {
         "consumption_kwh": "sum",
         "cost_usd": "sum",
@@ -76,8 +78,12 @@ def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str
         return []
     aggregated["consumption_kwh"] = aggregated["consumption_kwh"].fillna(0.0)
     aggregated["cost_usd"] = aggregated["cost_usd"].fillna(0.0)
-    temp_for_eff = aggregated["temperature_c"].fillna(1.0).replace(0.0, 1.0)
-    aggregated["efficiency"] = 100.0 - aggregated["consumption_kwh"] / temp_for_eff
+
+    # Efficiency: avoid division by zero; clamp to [0, 100]
+    temp_for_eff = aggregated["temperature_c"].fillna(20.0).replace(0.0, 1.0)
+    raw_efficiency = 100.0 - aggregated["consumption_kwh"] / temp_for_eff
+    aggregated["efficiency"] = raw_efficiency.clip(lower=0.0, upper=100.0)
+
     results: List[Dict[str, Any]] = []
     for _, row in aggregated.iterrows():
         ts = row["timestamp"]
@@ -104,22 +110,22 @@ def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str
 def get_analytics(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[Session, Depends(get_db)],
-    period: str = "month",
+    period: str = Query(default="month", pattern="^(week|month|year)$"),
 ) -> Any:
-    end_time = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     if period == "week":
-        start_time = end_time - timedelta(days=7)
+        start_time = now - timedelta(days=7)
     elif period == "month":
-        start_time = end_time - timedelta(days=30)
-    elif period == "year":
-        start_time = end_time - timedelta(days=365)
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid period. Must be 'week', 'month', or 'year'.",
-        )
+        start_time = now - timedelta(days=30)
+    else:  # year
+        start_time = now - timedelta(days=365)
+
+    # Store timestamps as naive UTC in DB; strip tz for comparison
+    start_naive = start_time.replace(tzinfo=None)
+    end_naive = now.replace(tzinfo=None)
+
     records = get_data_by_time_range(
-        db, user_id=current_user.id, start_time=start_time, end_time=end_time
+        db, user_id=current_user.id, start_time=start_naive, end_time=end_naive
     )
     if not records:
         return [
@@ -161,10 +167,12 @@ def get_analytics_summary(
     db: Annotated[Session, Depends(get_db)],
 ) -> Any:
     """Returns a high-level summary of the last 30 days."""
-    end_time = datetime.now(timezone.utc).replace(tzinfo=None)
-    start_time = end_time - timedelta(days=30)
+    now = datetime.now(timezone.utc)
+    end_naive = now.replace(tzinfo=None)
+    start_naive = (now - timedelta(days=30)).replace(tzinfo=None)
+
     records = get_data_by_time_range(
-        db, user_id=current_user.id, start_time=start_time, end_time=end_time
+        db, user_id=current_user.id, start_time=start_naive, end_time=end_naive
     )
     if not records:
         return {
@@ -177,9 +185,10 @@ def get_analytics_summary(
         float(getattr(r, "consumption_kwh", 0.0) or 0.0) for r in records
     )
     total_cost = sum(float(getattr(r, "cost_usd", 0.0) or 0.0) for r in records)
+    days_span = max((end_naive - start_naive).days, 1)
     return {
         "total_consumption_kwh": round(total_consumption, 2),
         "total_cost_usd": round(total_cost, 2),
-        "avg_daily_consumption_kwh": round(total_consumption / 30, 2),
+        "avg_daily_consumption_kwh": round(total_consumption / days_span, 2),
         "record_count": len(records),
     }

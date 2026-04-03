@@ -1,3 +1,4 @@
+import logging
 import traceback
 from typing import Any, Dict, Optional
 
@@ -6,11 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+logger = logging.getLogger(__name__)
+
 
 class ErrorDetail:
-    """
-    Error detail structure
-    """
+    """Error detail structure"""
 
     def __init__(
         self,
@@ -25,9 +26,6 @@ class ErrorDetail:
         self.context = context or {}
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert to dictionary representation
-        """
         result: Dict[str, Any] = {"code": self.code, "message": self.message}
         if self.detail:
             result["detail"] = self.detail
@@ -37,9 +35,7 @@ class ErrorDetail:
 
 
 class ErrorResponse:
-    """
-    Standard error response structure
-    """
+    """Standard error response structure"""
 
     def __init__(
         self,
@@ -52,9 +48,6 @@ class ErrorResponse:
         self.status_code = status_code
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert to dictionary representation
-        """
         result: Dict[str, Any] = {"error": self.error.to_dict()}
         if self.request_id:
             result["request_id"] = self.request_id
@@ -62,17 +55,12 @@ class ErrorResponse:
 
 
 def add_error_handlers(app: FastAPI) -> None:
-    """
-    Add error handlers to the FastAPI application
-    """
+    """Add error handlers to the FastAPI application"""
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
-    ):
-        """
-        Handle validation errors
-        """
+    ) -> JSONResponse:
         error_detail = ErrorDetail(
             code="VALIDATION_ERROR",
             message="Request validation failed",
@@ -82,21 +70,18 @@ def add_error_handlers(app: FastAPI) -> None:
         error_response = ErrorResponse(
             error=error_detail,
             request_id=request.headers.get("X-Request-ID"),
-            status_code=400,
+            status_code=422,
         )
-        return JSONResponse(status_code=400, content=error_response.to_dict())
+        return JSONResponse(status_code=422, content=error_response.to_dict())
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
-        """
-        Handle HTTP exceptions
-        """
         error_detail = ErrorDetail(
             code=f"HTTP_{exc.status_code}",
-            message=exc.detail,
-            context=getattr(exc, "headers", None),
+            message=str(exc.detail),
+            context={"headers": dict(exc.headers)} if exc.headers else {},
         )
         error_response = ErrorResponse(
             error=error_detail,
@@ -104,16 +89,16 @@ def add_error_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
         )
         return JSONResponse(
-            status_code=exc.status_code, content=error_response.to_dict()
+            status_code=exc.status_code,
+            content=error_response.to_dict(),
+            headers=dict(exc.headers) if exc.headers else None,
         )
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
-        """
-        Handle generic exceptions
-        """
+        logger.exception("Unhandled exception during request %s", request.url)
         error_detail = ErrorDetail(
             code="INTERNAL_SERVER_ERROR",
             message="An unexpected error occurred",

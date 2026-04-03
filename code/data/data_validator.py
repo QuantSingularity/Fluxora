@@ -47,7 +47,7 @@ def validate_raw_data(df: Any) -> ValidationResult:
     if df["consumption_kwh"].isnull().any():
         errors.append("Column 'consumption_kwh' contains null values.")
 
-    if (df["consumption_kwh"] < 0).any():
+    if (df["consumption_kwh"].dropna() < 0).any():
         errors.append("Column 'consumption_kwh' contains negative values.")
 
     if "cost_usd" in df.columns:
@@ -55,17 +55,15 @@ def validate_raw_data(df: Any) -> ValidationResult:
             errors.append("Column 'cost_usd' contains negative values.")
 
     if "temperature_c" in df.columns:
-        if (df["temperature_c"].dropna() < -100).any() or (
-            df["temperature_c"].dropna() > 100
-        ).any():
+        temp_valid = df["temperature_c"].dropna()
+        if (temp_valid < -100).any() or (temp_valid > 100).any():
             errors.append(
                 "Column 'temperature_c' has values outside plausible range [-100, 100]."
             )
 
     if "humidity_percent" in df.columns:
-        if (df["humidity_percent"].dropna() < 0).any() or (
-            df["humidity_percent"].dropna() > 100
-        ).any():
+        hum_valid = df["humidity_percent"].dropna()
+        if (hum_valid < 0).any() or (hum_valid > 100).any():
             errors.append(
                 "Column 'humidity_percent' has values outside range [0, 100]."
             )

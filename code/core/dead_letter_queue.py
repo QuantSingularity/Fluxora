@@ -2,8 +2,9 @@ import json
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
 import requests
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -17,9 +18,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database setup
-DATABASE_URL = "sqlite:///./dlq.db"  # Use PostgreSQL in production
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = "sqlite:///./dlq.db"
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -42,7 +45,6 @@ class DeadLetteredMessage(Base):
     resolved_at = Column(Float, nullable=True)
 
 
-# Create tables
 Base.metadata.create_all(bind=engine)
 
 
@@ -60,14 +62,17 @@ class DeadLetteredMessageModel(BaseModel):
     error_message: str
 
 
-app = FastAPI(title="Dead Letter Queue")
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    yield
+
+
+app = FastAPI(title="Dead Letter Queue", lifespan=lifespan)
 
 
 @app.post("/messages")
 async def create_message(message: DeadLetteredMessageModel) -> Dict[str, Any]:
-    """
-    Create a new dead-lettered message
-    """
+    """Create a new dead-lettered message"""
     db = SessionLocal()
     try:
         message_id = str(uuid.uuid4())
@@ -86,6 +91,9 @@ async def create_message(message: DeadLetteredMessageModel) -> Dict[str, Any]:
         db.add(db_message)
         db.commit()
         return {"message_id": message_id, "status": MessageStatus.PENDING.value}
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -94,9 +102,7 @@ async def create_message(message: DeadLetteredMessageModel) -> Dict[str, Any]:
 async def retry_message(
     message_id: str, background_tasks: BackgroundTasks
 ) -> Dict[str, Any]:
-    """
-    Retry a dead-lettered message
-    """
+    """Retry a dead-lettered message"""
     db = SessionLocal()
     try:
         message = (
@@ -110,24 +116,25 @@ async def retry_message(
         if message.resolved:
             raise HTTPException(status_code=400, detail="Message already resolved")
 
-        # Update retry count and timestamp
-        message.retry_count += 1  # type: ignore[assignment]
+        message.retry_count = (message.retry_count or 0) + 1  # type: ignore[assignment]
         message.last_retry_at = time.time()  # type: ignore[assignment]
         db.commit()
 
-        # Start retry in background
         background_tasks.add_task(retry_message_delivery, message_id)
 
         return {"message_id": message_id, "status": MessageStatus.RETRYING.value}
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
 @app.post("/messages/{message_id}/resolve")
 async def resolve_message(message_id: str) -> Dict[str, Any]:
-    """
-    Mark a dead-lettered message as resolved
-    """
+    """Mark a dead-lettered message as resolved"""
     db = SessionLocal()
     try:
         message = (
@@ -143,15 +150,18 @@ async def resolve_message(message_id: str) -> Dict[str, Any]:
         db.commit()
 
         return {"message_id": message_id, "status": MessageStatus.RESOLVED.value}
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
 @app.get("/messages/{message_id}")
 async def get_message(message_id: str) -> Dict[str, Any]:
-    """
-    Get message details
-    """
+    """Get message details"""
     db = SessionLocal()
     try:
         message = (
@@ -162,7 +172,7 @@ async def get_message(message_id: str) -> Dict[str, Any]:
         if not message:
             raise HTTPException(status_code=404, detail="Message not found")
 
-        status = (
+        msg_status = (
             MessageStatus.RESOLVED.value
             if message.resolved
             else MessageStatus.PENDING.value
@@ -179,7 +189,7 @@ async def get_message(message_id: str) -> Dict[str, Any]:
             "last_retry_at": message.last_retry_at,
             "resolved": message.resolved,
             "resolved_at": message.resolved_at,
-            "status": status,
+            "status": msg_status,
         }
     finally:
         db.close()
@@ -192,10 +202,8 @@ async def list_messages(
     resolved: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
-):
-    """
-    List dead-lettered messages with optional filtering
-    """
+) -> Dict[str, Any]:
+    """List dead-lettered messages with optional filtering"""
     db = SessionLocal()
     try:
         query = db.query(DeadLetteredMessage)
@@ -247,17 +255,13 @@ async def list_messages(
 
 
 @app.get("/health")
-async def health_check():
-    """
-    Health check endpoint
-    """
+async def health_check() -> Dict[str, str]:
+    """Health check endpoint"""
     return {"status": "healthy"}
 
 
-async def retry_message_delivery(message_id: str):
-    """
-    Retry delivery of a dead-lettered message
-    """
+async def retry_message_delivery(message_id: str) -> None:
+    """Retry delivery of a dead-lettered message"""
     db = SessionLocal()
     try:
         message = (
@@ -269,33 +273,32 @@ async def retry_message_delivery(message_id: str):
             return
 
         try:
-            # Get service URL from service registry
             service_url = get_service_url(str(message.destination_service))
             if not service_url:
                 return
 
-            # Send message to destination service
             payload_data = json.loads(str(message.payload))
-            response = requests.post(f"{service_url}/messages", json=payload_data)
+            response = requests.post(
+                f"{service_url}/messages", json=payload_data, timeout=5
+            )
 
             if response.status_code == 200:
-                # Mark message as resolved
                 message.resolved = True  # type: ignore[assignment]
                 message.resolved_at = time.time()  # type: ignore[assignment]
                 db.commit()
         except Exception as e:
-            logger.info(f"Error retrying message {message_id}: {str(e)}")
+            logger.error(f"Error retrying message {message_id}: {str(e)}")
     finally:
         db.close()
 
 
 def get_service_url(service_name: str) -> Optional[str]:
-    """
-    Get service URL from service registry
-    """
+    """Get service URL from service registry"""
     try:
         registry_url = "http://service-registry:8500"
-        response = requests.get(f"{registry_url}/v1/catalog/service/{service_name}")
+        response = requests.get(
+            f"{registry_url}/v1/catalog/service/{service_name}", timeout=2
+        )
         if response.status_code == 200:
             services = response.json()
             if services:
@@ -303,7 +306,7 @@ def get_service_url(service_name: str) -> Optional[str]:
                 return f"http://{service['ServiceAddress']}:{service['ServicePort']}"
         return None
     except Exception as e:
-        logger.info(f"Error getting service URL: {str(e)}")
+        logger.warning(f"Error getting service URL: {str(e)}")
         return None
 
 

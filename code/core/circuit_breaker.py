@@ -12,9 +12,7 @@ class CircuitState(Enum):
 
 
 class CircuitBreakerError(Exception):
-    """
-    Exception raised when a circuit breaker is open
-    """
+    """Exception raised when a circuit breaker is open"""
 
 
 class CircuitBreaker:
@@ -41,7 +39,7 @@ class CircuitBreaker:
 
         return wrapper
 
-    def call(self, func: Callable, *args, **kwargs) -> Any:
+    def call(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
         with self.lock:
             if self.state == CircuitState.OPEN:
                 if time.time() - self.last_failure_time > self.recovery_timeout:
@@ -61,30 +59,26 @@ class CircuitBreaker:
             except Exception:
                 self.failure_count += 1
                 self.last_failure_time = time.time()
-                if (
+                if self.state == CircuitState.HALF_OPEN:
+                    self.state = CircuitState.OPEN
+                elif (
                     self.state == CircuitState.CLOSED
                     and self.failure_count >= self.failure_threshold
                 ):
-                    self.state = CircuitState.OPEN
-                if self.state == CircuitState.HALF_OPEN:
                     self.state = CircuitState.OPEN
                 if self.fallback_function:
                     return self.fallback_function(*args, **kwargs)
                 raise
 
-    def reset(self) -> Any:
-        """
-        Reset the circuit breaker to its initial state
-        """
+    def reset(self) -> None:
+        """Reset the circuit breaker to its initial state"""
         with self.lock:
             self.state = CircuitState.CLOSED
             self.failure_count = 0
-            self.last_failure_time = 0
+            self.last_failure_time = 0.0
 
-    def get_state(self) -> Dict:
-        """
-        Get the current state of the circuit breaker
-        """
+    def get_state(self) -> Dict[str, Any]:
+        """Get the current state of the circuit breaker"""
         with self.lock:
             return {
                 "state": self.state.value,

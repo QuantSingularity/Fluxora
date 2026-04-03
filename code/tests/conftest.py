@@ -81,6 +81,38 @@ def test_user(db_session):
 
 
 @pytest.fixture()
+def superuser(db_session):
+    from models.user import User
+
+    user = User(
+        email="admin@example.com",
+        hashed_password=get_password_hash("adminpassword123"),
+        is_active=True,
+        is_superuser=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def inactive_user(db_session):
+    from models.user import User
+
+    user = User(
+        email="inactive@example.com",
+        hashed_password=get_password_hash("inactivepassword123"),
+        is_active=False,
+        is_superuser=False,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture()
 def auth_headers(client, test_user):
     response = client.post(
         "/v1/auth/token",
@@ -89,3 +121,31 @@ def auth_headers(client, test_user):
     assert response.status_code == 200, response.json()
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def superuser_auth_headers(client, superuser):
+    response = client.post(
+        "/v1/auth/token",
+        data={"username": "admin@example.com", "password": "adminpassword123"},
+    )
+    assert response.status_code == 200, response.json()
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def sample_energy_record(client, auth_headers):
+    """Creates and returns a single energy record for the test user."""
+    response = client.post(
+        "/v1/data/",
+        headers=auth_headers,
+        json={
+            "consumption_kwh": 42.5,
+            "cost_usd": 4.25,
+            "temperature_c": 21.0,
+            "humidity_percent": 55.0,
+        },
+    )
+    assert response.status_code == 201
+    return response.json()

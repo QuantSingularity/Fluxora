@@ -1,7 +1,10 @@
 import functools
+import logging
 import random
 import time
 from typing import Any, Callable, Tuple, Type, Union
+
+logger = logging.getLogger(__name__)
 
 
 def retry(
@@ -15,27 +18,37 @@ def retry(
     jitter: bool = True,
 ) -> Any:
     """
-    Retry decorator with exponential backoff
+    Retry decorator with exponential backoff.
+
+    Delay for attempt n (0-indexed) = min(base_delay * backoff_factor**n, max_delay)
+    with optional ±50 % jitter.
     """
 
     def decorator(func: Callable) -> Callable:
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            last_exception = None
-            delay = base_delay
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception: Exception | None = None
             for attempt in range(max_attempts):
                 try:
                     return func(*args, **kwargs)
                 except retry_exceptions as e:  # type: ignore[misc]
                     last_exception = e
                     if attempt < max_attempts - 1:
-                        sleep_time = min(delay * backoff_factor**attempt, max_delay)
+                        sleep_time = min(
+                            base_delay * (backoff_factor**attempt), max_delay
+                        )
                         if jitter:
                             sleep_time = sleep_time * (0.5 + random.random())
+                        logger.debug(
+                            f"Retry {attempt + 1}/{max_attempts} for {func.__name__} "
+                            f"after {sleep_time:.2f}s (error: {e})"
+                        )
                         time.sleep(sleep_time)
-            if last_exception:
+            if last_exception is not None:
                 raise last_exception
+            # Should never reach here, but satisfies type checkers
+            raise RuntimeError("retry: exhausted attempts without exception")
 
         return wrapper
 
@@ -43,12 +56,8 @@ def retry(
 
 
 class RetryableError(Exception):
-    """
-    Base class for errors that should be retried
-    """
+    """Base class for errors that should be retried"""
 
 
 class NonRetryableError(Exception):
-    """
-    Base class for errors that should not be retried
-    """
+    """Base class for errors that should not be retried"""

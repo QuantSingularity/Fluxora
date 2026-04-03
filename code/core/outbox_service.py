@@ -3,8 +3,9 @@ import json
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
 import requests
 from fastapi import FastAPI, HTTPException
@@ -19,7 +20,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATABASE_URL = "sqlite:///./outbox.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -50,17 +54,26 @@ class MessageStatus(Enum):
 
 class OutboxMessageModel(BaseModel):
     destination_service: str
-    payload: Dict
+    payload: Dict[str, Any]
 
 
-app = FastAPI(title="Outbox Service")
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    task = asyncio.create_task(process_messages())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="Outbox Service", lifespan=lifespan)
 
 
 @app.post("/messages")
 async def create_message(message: OutboxMessageModel) -> Dict[str, Any]:
-    """
-    Create a new outbox message
-    """
+    """Create a new outbox message"""
     db = SessionLocal()
     try:
         message_id = str(uuid.uuid4())
@@ -76,15 +89,16 @@ async def create_message(message: OutboxMessageModel) -> Dict[str, Any]:
         db.add(db_message)
         db.commit()
         return {"message_id": message_id, "status": MessageStatus.PENDING.value}
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
 @app.get("/messages/{message_id}")
 async def get_message(message_id: str) -> Dict[str, Any]:
-    """
-    Get message details
-    """
+    """Get message details"""
     db = SessionLocal()
     try:
         message = db.query(OutboxMessage).filter(OutboxMessage.id == message_id).first()
@@ -111,27 +125,15 @@ async def get_message(message_id: str) -> Dict[str, Any]:
 
 @app.get("/health")
 async def health_check() -> Dict[str, str]:
-    """
-    Health check endpoint
-    """
+    """Health check endpoint"""
     return {"status": "healthy"}
 
 
-@app.on_event("startup")
-async def start_message_processor() -> None:
-    """
-    Start the background message processor
-    """
-    asyncio.create_task(process_messages())
-
-
 async def process_messages() -> None:
-    """
-    Process pending outbox messages
-    """
+    """Process pending outbox messages"""
     while True:
+        db = SessionLocal()
         try:
-            db = SessionLocal()
             messages = (
                 db.query(OutboxMessage)
                 .filter(OutboxMessage.processed == False)  # noqa: E712
@@ -155,14 +157,15 @@ async def process_messages() -> None:
                         message.processed = True  # type: ignore[assignment]
                         message.processed_at = time.time()  # type: ignore[assignment]
                     else:
-                        message.retry_count += 1  # type: ignore[assignment]
+                        message.retry_count = (message.retry_count or 0) + 1  # type: ignore[assignment]
                 except Exception as e:
                     logger.error(f"Error processing message {message.id}: {str(e)}")
-                    message.retry_count += 1  # type: ignore[assignment]
+                    message.retry_count = (message.retry_count or 0) + 1  # type: ignore[assignment]
 
             db.commit()
         except Exception as e:
             logger.error(f"Error in message processor: {str(e)}")
+            db.rollback()
         finally:
             db.close()
 
@@ -170,9 +173,7 @@ async def process_messages() -> None:
 
 
 def get_service_url(service_name: str) -> Optional[str]:
-    """
-    Get service URL from service registry
-    """
+    """Get service URL from service registry"""
     try:
         registry_url = "http://service-registry:8500"
         response = requests.get(
@@ -187,6 +188,10 @@ def get_service_url(service_name: str) -> Optional[str]:
     except Exception as e:
         logger.warning(f"Error getting service URL: {str(e)}")
         return None
+
+
+if __name__ == "__main__":
+    import uvicorn
 
 
 if __name__ == "__main__":
