@@ -2,6 +2,7 @@
 # This module implements compliance monitoring and reporting for PCI DSS, GDPR, SOC 2, and other financial standards
 
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -27,7 +28,7 @@ resource "aws_config_config_rule" "pci_dss_rules" {
 
   input_parameters = jsonencode(each.value.input_parameters)
 
-  depends_on = [var.config_recorder_name]
+  # Note: ensure AWS Config recorder is active before applying
 
   tags = merge(var.common_tags, {
     Name       = "${var.app_name}-${var.environment}-${each.key}"
@@ -49,7 +50,7 @@ resource "aws_config_config_rule" "gdpr_rules" {
 
   input_parameters = jsonencode(each.value.input_parameters)
 
-  depends_on = [var.config_recorder_name]
+  # Note: ensure AWS Config recorder is active before applying
 
   tags = merge(var.common_tags, {
     Name       = "${var.app_name}-${var.environment}-${each.key}"
@@ -71,7 +72,7 @@ resource "aws_config_config_rule" "soc2_rules" {
 
   input_parameters = jsonencode(each.value.input_parameters)
 
-  depends_on = [var.config_recorder_name]
+  # Note: ensure AWS Config recorder is active before applying
 
   tags = merge(var.common_tags, {
     Name       = "${var.app_name}-${var.environment}-${each.key}"
@@ -89,7 +90,7 @@ resource "aws_config_config_rule" "data_classification" {
     source_identifier    = "S3_BUCKET_PUBLIC_READ_PROHIBITED"
   }
 
-  depends_on = [var.config_recorder_name]
+  # Note: ensure AWS Config recorder is active before applying
 
   tags = merge(var.common_tags, {
     Name       = "${var.app_name}-${var.environment}-data-classification"
@@ -337,11 +338,7 @@ data "archive_file" "compliance_lambda_zip" {
   type        = "zip"
   output_path = "/tmp/compliance_lambda.zip"
   source {
-    content = templatefile("${path.module}/lambda/compliance_reporter.py", {
-      app_name    = var.app_name
-      environment = var.environment
-      bucket_name = aws_s3_bucket.compliance_reports.bucket
-    })
+    content  = file("${path.module}/lambda/compliance_reporter.py")
     filename = "lambda_function.py"
   }
 }
@@ -352,7 +349,7 @@ resource "aws_lambda_function" "compliance_reporter" {
   role            = aws_iam_role.compliance_lambda_role.arn
   handler         = "lambda_function.lambda_handler"
   source_code_hash = data.archive_file.compliance_lambda_zip.output_base64sha256
-  runtime         = "python3.9"
+  runtime         = "python3.12"
   timeout         = 300
 
   environment {

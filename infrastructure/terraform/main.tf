@@ -1,9 +1,9 @@
 terraform {
-  required_version = ">= 1.0.0"
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
   backend "s3" {
@@ -28,16 +28,28 @@ module "network" {
   private_subnet_cidrs = var.private_subnet_cidrs
 }
 
+module "security" {
+  source = "./modules/security"
+
+  environment         = var.environment
+  vpc_id              = module.network.vpc_id
+  vpc_cidr            = var.vpc_cidr
+  app_name            = var.app_name
+  admin_cidr_blocks   = var.admin_cidr_blocks
+}
+
 module "compute" {
   source = "./modules/compute"
 
   environment        = var.environment
   vpc_id             = module.network.vpc_id
   private_subnet_ids = module.network.private_subnet_ids
+  public_subnet_ids  = module.network.public_subnet_ids
   instance_type      = var.instance_type
   key_name           = var.key_name
   app_name           = var.app_name
   security_group_ids = [module.security.app_security_group_id]
+  certificate_arn    = var.certificate_arn
 }
 
 module "database" {
@@ -58,14 +70,4 @@ module "storage" {
 
   environment = var.environment
   app_name    = var.app_name
-}
-
-module "security" {
-  source = "./modules/security"
-
-  environment         = var.environment
-  vpc_id              = module.network.vpc_id
-  vpc_cidr            = var.vpc_cidr
-  app_name            = var.app_name
-  admin_cidr_blocks   = var.admin_cidr_blocks
 }

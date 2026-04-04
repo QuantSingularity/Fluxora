@@ -29,19 +29,19 @@ def lambda_handler(event: Any, context: Any) -> Any:
     try:
         report_data = generate_compliance_report(config_client, app_name, environment)
         csv_content = create_csv_report(report_data)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         report_key = (
             f"compliance-reports/{environment}/{timestamp}_compliance_report.csv"
         )
         s3_client.put_object(
             Bucket=bucket_name,
             Key=report_key,
-            Body=csv_content,
+            Body=csv_content.encode("utf-8"),
             ContentType="text/csv",
             ServerSideEncryption="aws:kms",
         )
         summary = generate_summary_report(report_data)
-        send_notification(sns_client, sns_topic, summary, report_key)
+        send_notification(sns_client, sns_topic, summary, report_key, bucket_name)
         return {
             "statusCode": 200,
             "body": json.dumps(
@@ -53,63 +53,68 @@ def lambda_handler(event: Any, context: Any) -> Any:
             ),
         }
     except Exception as e:
-        logger.info(f"Error generating compliance report: {str(e)}")
+        logger.error(f"Error generating compliance report: {str(e)}", exc_info=True)
         error_message = f"Failed to generate compliance report: {str(e)}"
-        sns_client.publish(
-            TopicArn=sns_topic,
-            Subject=f"Compliance Report Generation Failed - {app_name} {environment}",
-            Message=error_message,
-        )
+        try:
+            sns_client.publish(
+                TopicArn=sns_topic,
+                Subject=f"Compliance Report Generation Failed - {app_name} {environment}",
+                Message=error_message,
+            )
+        except Exception as sns_err:
+            logger.error(f"Failed to send SNS failure notification: {str(sns_err)}")
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 
 def generate_compliance_report(
-    config_client: Any, app_name: Any, environment: Any
-) -> Any:
+    config_client: Any, app_name: str, environment: str
+) -> dict:
     """
     Generate comprehensive compliance report data
     """
-    report_data = {"pci_dss": [], "gdpr": [], "soc2": [], "general": []}
-    config_rules = config_client.describe_config_rules()
-    for rule in config_rules["ConfigRules"]:
-        rule_name = rule["ConfigRuleName"]
-        try:
-            compliance_details = config_client.get_compliance_details_by_config_rule(
-                ConfigRuleName=rule_name
-            )
-            for result in compliance_details["EvaluationResults"]:
-                compliance_data = {
-                    "rule_name": rule_name,
-                    "resource_type": result["EvaluationResultIdentifier"][
-                        "EvaluationResultQualifier"
-                    ]["ResourceType"],
-                    "resource_id": result["EvaluationResultIdentifier"][
-                        "EvaluationResultQualifier"
-                    ]["ResourceId"],
-                    "compliance_type": result["ComplianceType"],
-                    "result_recorded_time": result["ResultRecordedTime"].isoformat(),
-                    "annotation": result.get("Annotation", ""),
-                    "config_rule_invoked_time": result[
-                        "ConfigRuleInvokedTime"
-                    ].isoformat(),
-                }
-                if "pci" in rule_name.lower():
-                    report_data["pci_dss"].append(compliance_data)
-                elif "gdpr" in rule_name.lower():
-                    report_data["gdpr"].append(compliance_data)
-                elif "soc2" in rule_name.lower():
-                    report_data["soc2"].append(compliance_data)
-                else:
-                    report_data["general"].append(compliance_data)
-        except Exception as e:
-            logger.info(
-                f"Error getting compliance details for rule {rule_name}: {str(e)}"
-            )
-            continue
+    report_data: dict = {"pci_dss": [], "gdpr": [], "soc2": [], "general": []}
+    paginator = config_client.get_paginator("describe_config_rules")
+    for page in paginator.paginate():
+        for rule in page["ConfigRules"]:
+            rule_name = rule["ConfigRuleName"]
+            try:
+                results_paginator = config_client.get_paginator(
+                    "get_compliance_details_by_config_rule"
+                )
+                for results_page in results_paginator.paginate(ConfigRuleName=rule_name):
+                    for result in results_page["EvaluationResults"]:
+                        compliance_data = {
+                            "rule_name": rule_name,
+                            "resource_type": result["EvaluationResultIdentifier"][
+                                "EvaluationResultQualifier"
+                            ]["ResourceType"],
+                            "resource_id": result["EvaluationResultIdentifier"][
+                                "EvaluationResultQualifier"
+                            ]["ResourceId"],
+                            "compliance_type": result["ComplianceType"],
+                            "result_recorded_time": result["ResultRecordedTime"].isoformat(),
+                            "annotation": result.get("Annotation", ""),
+                            "config_rule_invoked_time": result[
+                                "ConfigRuleInvokedTime"
+                            ].isoformat(),
+                        }
+                        if "pci" in rule_name.lower():
+                            report_data["pci_dss"].append(compliance_data)
+                        elif "gdpr" in rule_name.lower():
+                            report_data["gdpr"].append(compliance_data)
+                        elif "soc2" in rule_name.lower():
+                            report_data["soc2"].append(compliance_data)
+                        else:
+                            report_data["general"].append(compliance_data)
+            except Exception as e:
+                logger.warning(
+                    f"Error getting compliance details for rule {rule_name}: {str(e)}"
+                )
+                continue
     return report_data
 
 
-def create_csv_report(report_data: Any) -> Any:
+def create_csv_report(report_data: dict) -> str:
     """
     Create CSV format compliance report
     """
@@ -144,22 +149,22 @@ def create_csv_report(report_data: Any) -> Any:
     return output.getvalue()
 
 
-def generate_summary_report(report_data: Any) -> Any:
+def generate_summary_report(report_data: dict) -> dict:
     """
     Generate summary statistics for compliance report
     """
-    summary = {
+    summary: dict = {
         "total_resources_evaluated": 0,
         "compliant_resources": 0,
         "non_compliant_resources": 0,
         "frameworks": {},
     }
     for framework, data in report_data.items():
-        framework_summary = {
+        framework_summary: dict = {
             "total": len(data),
             "compliant": 0,
             "non_compliant": 0,
-            "compliance_percentage": 0,
+            "compliance_percentage": 0.0,
         }
         for item in data:
             if item["compliance_type"] == "COMPLIANT":
@@ -180,20 +185,36 @@ def generate_summary_report(report_data: Any) -> Any:
             2,
         )
     else:
-        summary["overall_compliance_percentage"] = 0
+        summary["overall_compliance_percentage"] = 0.0
     return summary
 
 
 def send_notification(
-    sns_client: Any, sns_topic: Any, summary: Any, report_key: Any
-) -> Any:
+    sns_client: Any, sns_topic: str, summary: dict, report_key: str, bucket_name: str
+) -> None:
     """
     Send notification with compliance report summary
     """
-    message = f"\nCompliance Report Generated Successfully\n\nOverall Compliance: {summary['overall_compliance_percentage']}%\nTotal Resources Evaluated: {summary['total_resources_evaluated']}\nCompliant Resources: {summary['compliant_resources']}\nNon-Compliant Resources: {summary['non_compliant_resources']}\n\nFramework Breakdown:\n"
+    message = (
+        f"\nCompliance Report Generated Successfully\n\n"
+        f"Overall Compliance: {summary['overall_compliance_percentage']}%\n"
+        f"Total Resources Evaluated: {summary['total_resources_evaluated']}\n"
+        f"Compliant Resources: {summary['compliant_resources']}\n"
+        f"Non-Compliant Resources: {summary['non_compliant_resources']}\n\n"
+        f"Framework Breakdown:\n"
+    )
     for framework, data in summary["frameworks"].items():
-        message += f"\n{framework.upper()}:\n  - Total: {data['total']}\n  - Compliant: {data['compliant']}\n  - Non-Compliant: {data['non_compliant']}\n  - Compliance Rate: {data['compliance_percentage']}%\n"
-    message += f"\nReport Location: s3://{report_key}\n\nGenerated at: {datetime.now().isoformat()}\n"
+        message += (
+            f"\n{framework.upper()}:\n"
+            f"  - Total: {data['total']}\n"
+            f"  - Compliant: {data['compliant']}\n"
+            f"  - Non-Compliant: {data['non_compliant']}\n"
+            f"  - Compliance Rate: {data['compliance_percentage']}%\n"
+        )
+    message += (
+        f"\nReport Location: s3://{bucket_name}/{report_key}\n\n"
+        f"Generated at: {datetime.utcnow().isoformat()}Z\n"
+    )
     sns_client.publish(
         TopicArn=sns_topic,
         Subject=f"Compliance Report - {summary['overall_compliance_percentage']}% Overall Compliance",

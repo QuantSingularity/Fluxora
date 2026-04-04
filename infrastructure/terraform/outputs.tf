@@ -22,3 +22,14 @@ output "db_security_group_id" {
   description = "Database security group ID"
   value       = module.security.db_security_group_id
 }
+
+output "load_balancer_dns" {
+  description = "Load balancer DNS name"
+  value       = module.compute.load_balancer_dns
+}
+
+output "db_endpoint" {
+  description = "Database endpoint"
+  value       = module.database.db_endpoint
+  sensitive   = true
+}

@@ -2,6 +2,10 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: fluxora-redis-pvc
+  namespace: fluxora
+  labels:
+    app: fluxora-redis
+    component: cache
 spec:
   accessModes:
     - ReadWriteOnce

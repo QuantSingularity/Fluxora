@@ -1,4 +1,4 @@
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
   name: fluxora-gateway
@@ -12,16 +12,28 @@ spec:
         name: http
         protocol: HTTP
       hosts:
-        - "*"
+        - "*.fluxora.example.com"
+      tls:
+        httpsRedirect: true
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "*.fluxora.example.com"
+      tls:
+        mode: SIMPLE
+        credentialName: fluxora-tls
+
 ---
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: fluxora-api
   namespace: fluxora
 spec:
   hosts:
-    - "*"
+    - "*.fluxora.example.com"
   gateways:
     - fluxora-gateway
   http:
@@ -30,43 +42,58 @@ spec:
             prefix: /api
       route:
         - destination:
-            host: fluxora-api
+            host: fluxora-backend
             port:
-              number: 8000
+              number: 80
           weight: 100
       retries:
         attempts: 3
         perTryTimeout: 2s
-      timeout: 5s
+        retryOn: "5xx,reset,connect-failure,retriable-4xx"
+      timeout: 10s
       fault:
         delay:
           percentage:
-            value: 0
+            value: 0.0
           fixedDelay: 0s
-        abort:
-          percentage:
-            value: 0
-          httpStatus: 500
+
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: fluxora-frontend
+            port:
+              number: 80
+          weight: 100
+      timeout: 10s
+
 ---
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: fluxora-api
+  name: fluxora-backend-dr
   namespace: fluxora
 spec:
-  host: fluxora-api
+  host: fluxora-backend
   trafficPolicy:
     loadBalancer:
-      simple: ROUND_ROBIN
+      simple: LEAST_CONN
     connectionPool:
       tcp:
         maxConnections: 100
         connectTimeout: 30ms
       http:
         http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
         maxRequestsPerConnection: 10
+        idleTimeout: 90s
     outlierDetection:
-      consecutiveErrors: 5
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
       interval: 30s
       baseEjectionTime: 30s
-      maxEjectionPercent: 100
+      maxEjectionPercent: 50
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

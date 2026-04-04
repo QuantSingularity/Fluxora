@@ -1,13 +1,26 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fluxora-config
+  name: fluxora-backend-config
+  namespace: fluxora
+  labels:
+    app: fluxora-backend
+    component: config
 data:
-  API_URL: http://app-backend
-  REDIS_HOST: fluxora-redis
+  API_URL: "http://fluxora-backend"
+  REDIS_HOST: "fluxora-redis"
   REDIS_PORT: "6379"
-  DATABASE_HOST: fluxora-database
+  DATABASE_HOST: "fluxora-database"
   DATABASE_PORT: "3306"
-  DATABASE_NAME: fluxoradb
-  DATABASE_USER: appuser
-  LOG_LEVEL: debug
+  DATABASE_NAME: "fluxoradb"
+  DATABASE_USER: "appuser"
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  HEALTH_CHECK_ENABLED: "true"
+  AUDIT_LOGGING: "enabled"
+  COMPLIANCE_MODE: "financial"
+  PCI_DSS_MODE: "true"
+  GDPR_MODE: "true"
+  SOC2_MODE: "true"

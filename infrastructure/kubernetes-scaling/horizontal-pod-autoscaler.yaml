@@ -1,443 +1,130 @@
-# Enhanced Horizontal Pod Autoscaler for Financial Standards Compliance
-# This configuration provides robust, predictable scaling for financial applications
+# Horizontal Pod Autoscaler for Fluxora Backend
 
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: fluxora-api-hpa
+  name: fluxora-backend-hpa
   namespace: fluxora
   labels:
-    app: fluxora-api
+    app: fluxora-backend
     component: autoscaling
     compliance: "pci-dss,gdpr,soc2"
     tier: application
   annotations:
     fluxora.com/scaling-policy: "financial-grade"
     fluxora.com/min-availability: "99.9%"
-    fluxora.com/disaster-recovery: "enabled"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: fluxora-api
+    name: fluxora-backend
 
-  # Conservative scaling for financial stability
-  minReplicas: 5 # Increased minimum for high availability
-  maxReplicas: 50 # Higher maximum for peak loads
+  minReplicas: 2
+  maxReplicas: 20
 
   metrics:
-    # CPU-based scaling - Conservative thresholds
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 60 # Lower threshold for financial applications
+          averageUtilization: 60
 
-    # Memory-based scaling
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: 70 # Conservative memory threshold
+          averageUtilization: 70
 
-    # Request rate scaling
     - type: Pods
       pods:
         metric:
           name: requests_per_second
         target:
           type: AverageValue
-          averageValue: 500 # Conservative request rate per pod
+          averageValue: "500"
 
-    # Response time scaling
     - type: Pods
       pods:
         metric:
           name: response_time_p95
         target:
           type: AverageValue
-          averageValue: 200m # 200ms 95th percentile response time
+          averageValue: "200m"
 
-    # Error rate scaling
     - type: Pods
       pods:
         metric:
           name: error_rate_percent
         target:
           type: AverageValue
-          averageValue: 1 # Scale up if error rate > 1%
-
-    # Database connection scaling
-    - type: Pods
-      pods:
-        metric:
-          name: database_connections_percent
-        target:
-          type: AverageValue
-          averageValue: 60 # Scale before hitting connection limits
-
-    # Custom business metrics
-    - type: Object
-      object:
-        metric:
-          name: active_user_sessions
-        target:
-          type: Value
-          value: 1000 # Scale based on active sessions
-        describedObject:
-          apiVersion: v1
-          kind: Service
-          name: fluxora-api
+          averageValue: "1"
 
   behavior:
-    # Conservative scale-down to maintain stability
-    scaleDown:
-      stabilizationWindowSeconds: 600 # 10 minutes stabilization
-      policies:
-        - type: Percent
-          value: 5 # Maximum 5% scale down per period
-          periodSeconds: 120 # Every 2 minutes
-        - type: Pods
-          value: 1 # Maximum 1 pod scale down per period
-          periodSeconds: 120
-      selectPolicy: Min # Use the most conservative policy
-
-    # Responsive scale-up for performance
     scaleUp:
-      stabilizationWindowSeconds: 120 # 2 minutes stabilization
+      stabilizationWindowSeconds: 60
       policies:
-        - type: Percent
-          value: 50 # Maximum 50% scale up per period
-          periodSeconds: 60
         - type: Pods
-          value: 5 # Maximum 5 pods scale up per period
+          value: 4
           periodSeconds: 60
-      selectPolicy: Max # Use the most aggressive policy for scale-up
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 120
+      selectPolicy: Min
 
 ---
-# Vertical Pod Autoscaler for Resource Optimization
-apiVersion: autoscaling.k8s.io/v1
-kind: VerticalPodAutoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
-  name: fluxora-api-vpa
+  name: fluxora-frontend-hpa
   namespace: fluxora
   labels:
-    app: fluxora-api
+    app: fluxora-frontend
     component: autoscaling
-    compliance: "pci-dss,gdpr,soc2"
 spec:
-  targetRef:
+  scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: fluxora-api
+    name: fluxora-frontend
 
-  updatePolicy:
-    updateMode: "Auto" # Automatically apply recommendations
-    minReplicas: 5 # Maintain minimum replicas during updates
+  minReplicas: 2
+  maxReplicas: 10
 
-  resourcePolicy:
-    containerPolicies:
-      - containerName: fluxora-api
-        minAllowed:
-          cpu: 500m
-          memory: 1Gi
-        maxAllowed:
-          cpu: 4000m
-          memory: 8Gi
-        controlledResources: ["cpu", "memory"]
-        controlledValues: RequestsAndLimits
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
 
-      - containerName: security-agent
-        minAllowed:
-          cpu: 100m
-          memory: 128Mi
-        maxAllowed:
-          cpu: 500m
-          memory: 512Mi
-        controlledResources: ["cpu", "memory"]
-        controlledValues: RequestsAndLimits
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
 
-      - containerName: log-forwarder
-        minAllowed:
-          cpu: 100m
-          memory: 128Mi
-        maxAllowed:
-          cpu: 300m
-          memory: 256Mi
-        controlledResources: ["cpu", "memory"]
-        controlledValues: RequestsAndLimits
-
----
-# Pod Disruption Budget for High Availability
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: fluxora-api-pdb
-  namespace: fluxora
-  labels:
-    app: fluxora-api
-    component: availability
-    compliance: "pci-dss,gdpr,soc2"
-spec:
-  minAvailable: 80% # Maintain at least 80% of pods during disruptions
-  selector:
-    matchLabels:
-      app: fluxora-api
-      component: backend
-
----
-# Priority Class for Financial Workloads
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: financial-workload-critical
-  labels:
-    compliance: "pci-dss,gdpr,soc2"
-value: 1000000 # High priority for financial applications
-globalDefault: false
-description: "Critical priority for financial applications requiring high availability"
-
----
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: financial-workload-high
-  labels:
-    compliance: "pci-dss,gdpr,soc2"
-value: 100000 # High priority for financial applications
-globalDefault: false
-description: "High priority for financial applications"
-
----
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: financial-workload-normal
-  labels:
-    compliance: "pci-dss,gdpr,soc2"
-value: 10000 # Normal priority for financial applications
-globalDefault: false
-description: "Normal priority for financial applications"
-
----
-# Resource Quota for Financial Namespace
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: fluxora-resource-quota
-  namespace: fluxora
-  labels:
-    compliance: "pci-dss,gdpr,soc2"
-spec:
-  hard:
-    # Compute Resources
-    requests.cpu: "50" # 50 CPU cores
-    requests.memory: 100Gi # 100 GB memory
-    limits.cpu: "100" # 100 CPU cores limit
-    limits.memory: 200Gi # 200 GB memory limit
-
-    # Storage Resources
-    requests.storage: 1Ti # 1 TB storage
-    persistentvolumeclaims: "20"
-
-    # Object Counts
-    pods: "200"
-    services: "50"
-    secrets: "100"
-    configmaps: "100"
-
-    # Load Balancers
-    services.loadbalancers: "10"
-    services.nodeports: "20"
-
----
-# Limit Range for Pod Resources
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: fluxora-limit-range
-  namespace: fluxora
-  labels:
-    compliance: "pci-dss,gdpr,soc2"
-spec:
-  limits:
-    # Container limits
-    - type: Container
-      default:
-        cpu: 1000m
-        memory: 2Gi
-        ephemeral-storage: 2Gi
-      defaultRequest:
-        cpu: 500m
-        memory: 1Gi
-        ephemeral-storage: 1Gi
-      min:
-        cpu: 100m
-        memory: 128Mi
-        ephemeral-storage: 100Mi
-      max:
-        cpu: 8000m
-        memory: 16Gi
-        ephemeral-storage: 10Gi
-
-    # Pod limits
-    - type: Pod
-      max:
-        cpu: 16000m
-        memory: 32Gi
-        ephemeral-storage: 20Gi
-      min:
-        cpu: 200m
-        memory: 256Mi
-        ephemeral-storage: 200Mi
-
-    # Persistent Volume Claim limits
-    - type: PersistentVolumeClaim
-      min:
-        storage: 1Gi
-      max:
-        storage: 1Ti
-
----
-# Network Policy for Financial Applications
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: fluxora-network-policy
-  namespace: fluxora
-  labels:
-    app: fluxora
-    compliance: "pci-dss,gdpr,soc2"
-spec:
-  podSelector:
-    matchLabels:
-      app: fluxora-api
-
-  policyTypes:
-    - Ingress
-    - Egress
-
-  ingress:
-    # Allow ingress from load balancer
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: ingress-nginx
-      ports:
-        - protocol: TCP
-          port: 8000
-
-    # Allow ingress from monitoring
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: monitoring
-      ports:
-        - protocol: TCP
-          port: 9090 # Metrics port
-
-    # Allow ingress from same namespace
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: fluxora
-      ports:
-        - protocol: TCP
-          port: 8000
-
-  egress:
-    # Allow egress to database
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              name: database
-      ports:
-        - protocol: TCP
-          port: 3306
-        - protocol: TCP
-          port: 5432
-
-    # Allow egress to cache
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              name: cache
-      ports:
-        - protocol: TCP
-          port: 6379
-
-    # Allow egress to external APIs (HTTPS only)
-    - to: []
-      ports:
-        - protocol: TCP
-          port: 443
-
-    # Allow DNS resolution
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              name: kube-system
-      ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-
----
-# Service Account with RBAC for Financial Applications
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: fluxora-api-sa
-  namespace: fluxora
-  labels:
-    app: fluxora-api
-    compliance: "pci-dss,gdpr,soc2"
-automountServiceAccountToken: true
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: fluxora-api-role
-  namespace: fluxora
-  labels:
-    app: fluxora-api
-    compliance: "pci-dss,gdpr,soc2"
-rules:
-  # Allow reading own pod information
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list"]
-    resourceNames: []
-
-  # Allow reading config maps and secrets
-  - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
-    verbs: ["get", "list"]
-    resourceNames: []
-
-  # Allow reading services
-  - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["get", "list"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: fluxora-api-rolebinding
-  namespace: fluxora
-  labels:
-    app: fluxora-api
-    compliance: "pci-dss,gdpr,soc2"
-subjects:
-  - kind: ServiceAccount
-    name: fluxora-api-sa
-    namespace: fluxora
-roleRef:
-  kind: Role
-  name: fluxora-api-role
-  apiGroup: rbac.authorization.k8s.io
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Min

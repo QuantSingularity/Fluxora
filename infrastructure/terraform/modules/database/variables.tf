@@ -40,3 +40,9 @@ variable "security_group_ids" {
   description = "List of security group IDs"
   type        = list(string)
 }
+
+variable "allocated_storage" {
+  description = "Allocated storage in GB"
+  type        = number
+  default     = 20
+}

@@ -125,7 +125,7 @@ parameters:
   gidRangeEnd: "2000"
   basePath: "/fluxora-shared"
   encrypted: "true"
-volumeBindingMode: Immediate
+volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: false
 reclaimPolicy: Retain
 

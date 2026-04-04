@@ -1,30 +1,24 @@
 # Fluxora Infrastructure - Example Configuration
 # Copy this file to terraform.tfvars and fill in your values
 
-# Environment Configuration
-environment = "dev"  # Options: dev, staging, prod
+environment = "dev"
 app_name    = "fluxora"
+aws_region  = "us-west-2"
 
-# AWS Configuration
-aws_region = "us-west-2"
-
-# Network Configuration
 vpc_cidr             = "10.0.0.0/16"
 availability_zones   = ["us-west-2a", "us-west-2b", "us-west-2c"]
 public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
 private_subnet_cidrs = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
 
-# Compute Configuration
-instance_type = "t3.micro"
-key_name      = "your-ssh-key-name"  # Optional: SSH key for EC2 instances
+instance_type   = "t3.micro"
+key_name        = "your-ssh-key-name"
+certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/your-cert-id"
 
-# Database Configuration
 db_instance_class = "db.t3.micro"
-db_name           = "fluxora_db"
-db_username       = "admin"  # CHANGE THIS
-db_password       = "CHANGE_ME_STRONG_PASSWORD"  # CHANGE THIS - Use AWS Secrets Manager in production
+db_name           = "fluxoradb"
+db_username       = "admin"
+db_password       = "CHANGE_ME_USE_SECRETS_MANAGER"
 
-# Tags
 default_tags = {
   Terraform   = "true"
   Environment = "dev"
@@ -32,5 +26,4 @@ default_tags = {
   ManagedBy   = "terraform"
 }
 
-# Administrative Access
-admin_cidr_blocks = ["10.0.0.0/8"]  # Restrict to specific IPs in production
+admin_cidr_blocks = ["10.0.0.0/8"]

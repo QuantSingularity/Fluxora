@@ -9,7 +9,12 @@ variable "vpc_id" {
 }
 
 variable "private_subnet_ids" {
-  description = "IDs of the private subnets"
+  description = "IDs of the private subnets (for ASG instances)"
+  type        = list(string)
+}
+
+variable "public_subnet_ids" {
+  description = "IDs of the public subnets (for ALB)"
   type        = list(string)
 }
 
@@ -33,4 +38,10 @@ variable "app_name" {
 variable "security_group_ids" {
   description = "List of security group IDs"
   type        = list(string)
+}
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for HTTPS"
+  type        = string
+  default     = ""
 }

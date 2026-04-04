@@ -1,0 +1,29 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fluxora-backend-pdb
+  namespace: fluxora
+  labels:
+    app: fluxora-backend
+    component: backend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: fluxora-backend
+      component: backend
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fluxora-frontend-pdb
+  namespace: fluxora
+  labels:
+    app: fluxora-frontend
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: fluxora-frontend

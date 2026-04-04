@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluxora-backend-sa
+  namespace: fluxora
+  labels:
+    app: fluxora-backend
+    component: backend
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+automountServiceAccountToken: false
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fluxora-backend-role
+  namespace: fluxora
+  labels:
+    app: fluxora-backend
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["fluxora-backend-config"]
+    verbs: ["get", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      [
+        "fluxora-db-credentials",
+        "fluxora-app-secrets",
+        "fluxora-redis-credentials",
+        "fluxora-ssl-certs",
+      ]
+    verbs: ["get", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fluxora-backend-rolebinding
+  namespace: fluxora
+  labels:
+    app: fluxora-backend
+subjects:
+  - kind: ServiceAccount
+    name: fluxora-backend-sa
+    namespace: fluxora
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: fluxora-backend-role

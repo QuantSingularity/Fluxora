@@ -11,7 +11,6 @@ metadata:
     tier: application
   annotations:
     deployment.kubernetes.io/revision: "1"
-    kubectl.kubernetes.io/last-applied-configuration: ""
     fluxora.com/deployment-strategy: "rolling-update"
     fluxora.com/security-scan: "required"
 spec:
@@ -20,7 +19,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 0 # Zero downtime deployment
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: fluxora-backend
@@ -40,7 +39,6 @@ spec:
         fluxora.com/log-level: "INFO"
         fluxora.com/security-context: "restricted"
     spec:
-      # Security Context - Financial Grade Security
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -50,11 +48,9 @@ spec:
           type: RuntimeDefault
         supplementalGroups: [10001]
 
-      # Service Account with RBAC
       serviceAccountName: fluxora-backend-sa
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
 
-      # Node Selection and Affinity
       nodeSelector:
         kubernetes.io/os: linux
         node-type: application
@@ -80,14 +76,12 @@ spec:
                       - spot
                       - preemptible
 
-      # Tolerations for dedicated nodes
       tolerations:
         - key: "financial-workload"
           operator: "Equal"
           value: "true"
           effect: "NoSchedule"
 
-      # Init Containers for Security and Setup
       initContainers:
         - name: security-scanner
           image: aquasec/trivy:0.48.0
@@ -144,7 +138,6 @@ spec:
           image: registry.example.com/app/backend:1.0.0
           imagePullPolicy: Always
 
-          # Security Context - Pod Level
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -154,8 +147,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-              add:
-                - NET_BIND_SERVICE # Only if binding to privileged ports
 
           ports:
             - name: http
@@ -168,7 +159,6 @@ spec:
               containerPort: 8080
               protocol: TCP
 
-          # Resource Management - Financial Grade
           resources:
             limits:
               cpu: 500m
@@ -179,10 +169,13 @@ spec:
               memory: 256Mi
               ephemeral-storage: "1Gi"
 
-          # Environment Variables - Secure Configuration
           env:
             - name: NODE_ENV
-              value: dev
+              valueFrom:
+                configMapKeyRef:
+                  name: fluxora-backend-config
+                  key: NODE_ENV
+                  optional: true
             - name: APP_NAME
               value: fluxora
             - name: APP_VERSION
@@ -204,7 +197,6 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
 
-            # Database Configuration
             - name: DATABASE_HOST
               valueFrom:
                 secretKeyRef:
@@ -231,7 +223,6 @@ spec:
                   name: fluxora-db-credentials
                   key: password
 
-            # Application Secrets
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -248,7 +239,6 @@ spec:
                   name: fluxora-app-secrets
                   key: api-key
 
-            # Redis Configuration
             - name: REDIS_HOST
               valueFrom:
                 secretKeyRef:
@@ -265,7 +255,6 @@ spec:
                   name: fluxora-redis-credentials
                   key: password
 
-            # Compliance and Security Settings
             - name: COMPLIANCE_MODE
               value: "financial"
             - name: AUDIT_LOGGING
@@ -279,7 +268,6 @@ spec:
             - name: SOC2_MODE
               value: "true"
 
-            # Logging Configuration
             - name: LOG_LEVEL
               value: INFO
             - name: LOG_FORMAT
@@ -289,7 +277,6 @@ spec:
             - name: AUDIT_LOG_ENABLED
               value: "true"
 
-            # Performance and Monitoring
             - name: METRICS_ENABLED
               value: "true"
             - name: TRACING_ENABLED
@@ -297,7 +284,6 @@ spec:
             - name: HEALTH_CHECK_ENABLED
               value: "true"
 
-          # Volume Mounts
           volumeMounts:
             - name: tmp-volume
               mountPath: /tmp
@@ -312,7 +298,6 @@ spec:
               mountPath: /app/certs
               readOnly: true
 
-          # Health Checks - Enhanced for Financial Applications
           livenessProbe:
             httpGet:
               path: /health/live
@@ -352,38 +337,10 @@ spec:
             successThreshold: 1
             failureThreshold: 30
 
-          # Lifecycle Hooks
           lifecycle:
             preStop:
               exec:
                 command: ["/app/scripts/graceful-shutdown.sh"]
-
-        # Sidecar Containers for Enhanced Security and Monitoring
-        - name: security-agent
-          image: sysdig/sysdig:12.18.0
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 10002
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          resources:
-            limits:
-              cpu: 200m
-              memory: 256Mi
-            requests:
-              cpu: 100m
-              memory: 128Mi
-          volumeMounts:
-            - name: security-logs
-              mountPath: /var/log/security
-          env:
-            - name: SECURITY_MODE
-              value: "financial"
-            - name: COMPLIANCE_FRAMEWORKS
-              value: "pci-dss,gdpr,soc2"
 
         - name: log-forwarder
           image: fluent/fluent-bit:2.2.0
@@ -415,7 +372,6 @@ spec:
             - name: COMPLIANCE_TAGGING
               value: "enabled"
 
-      # Volumes
       volumes:
         - name: tmp-volume
           emptyDir:
@@ -438,11 +394,9 @@ spec:
             secretName: fluxora-ssl-certs
             defaultMode: 0444
 
-      # Image Pull Secrets
       imagePullSecrets:
         - name: regcred
 
-      # DNS Configuration
       dnsPolicy: ClusterFirst
       dnsConfig:
         options:
@@ -450,11 +404,6 @@ spec:
             value: "2"
           - name: edns0
 
-      # Termination Grace Period
       terminationGracePeriodSeconds: 60
-
-      # Priority and Preemption
       priorityClassName: financial-workload-high
-
-      # Restart Policy
       restartPolicy: Always

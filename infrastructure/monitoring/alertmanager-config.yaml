@@ -49,82 +49,82 @@ data:
         # Critical security alerts - immediate response required
         - match_re:
             alertname: '^(SecurityBreach|UnauthorizedAccess|DataExfiltration|MalwareDetected).*'
-        receiver: 'security-team-critical'
-        group_wait: 0s
-        repeat_interval: 15m
-        continue: false
+          receiver: 'security-team-critical'
+          group_wait: 0s
+          repeat_interval: 15m
+          continue: false
 
         # PCI DSS compliance alerts
         - match_re:
             compliance: '.*pci-dss.*'
-        receiver: 'compliance-team-pci'
-        group_wait: 10s
-        repeat_interval: 1h
-        continue: true
+          receiver: 'compliance-team-pci'
+          group_wait: 10s
+          repeat_interval: 1h
+          continue: true
 
         # GDPR compliance alerts
         - match_re:
             compliance: '.*gdpr.*'
-        receiver: 'compliance-team-gdpr'
-        group_wait: 10s
-        repeat_interval: 1h
-        continue: true
+          receiver: 'compliance-team-gdpr'
+          group_wait: 10s
+          repeat_interval: 1h
+          continue: true
 
         # SOC 2 compliance alerts
         - match_re:
             compliance: '.*soc2.*'
-        receiver: 'compliance-team-soc2'
-        group_wait: 10s
-        repeat_interval: 1h
-        continue: true
+          receiver: 'compliance-team-soc2'
+          group_wait: 10s
+          repeat_interval: 1h
+          continue: true
 
         # Critical infrastructure alerts
         - match:
             severity: critical
-        receiver: 'infrastructure-critical'
-        group_wait: 10s
-        repeat_interval: 30m
-        continue: true
+          receiver: 'infrastructure-critical'
+          group_wait: 10s
+          repeat_interval: 30m
+          continue: true
 
         # Database alerts
         - match_re:
             service: '.*database.*|.*mysql.*|.*redis.*'
-        receiver: 'database-team'
-        group_wait: 30s
-        repeat_interval: 2h
-        continue: true
+          receiver: 'database-team'
+          group_wait: 30s
+          repeat_interval: 2h
+          continue: true
 
         # Application performance alerts
         - match_re:
             alertname: '^(HighLatency|HighErrorRate|LowThroughput).*'
-        receiver: 'application-team'
-        group_wait: 1m
-        repeat_interval: 2h
-        continue: true
+          receiver: 'application-team'
+          group_wait: 1m
+          repeat_interval: 2h
+          continue: true
 
         # Certificate expiration alerts
         - match_re:
             alertname: '^CertificateExpir.*'
-        receiver: 'security-team-certs'
-        group_wait: 5m
-        repeat_interval: 24h
-        continue: true
+          receiver: 'security-team-certs'
+          group_wait: 5m
+          repeat_interval: 24h
+          continue: true
 
         # Backup and recovery alerts
         - match_re:
             alertname: '^(BackupFailed|RestoreFailed).*'
-        receiver: 'backup-team'
-        group_wait: 2m
-        repeat_interval: 6h
-        continue: true
+          receiver: 'backup-team'
+          group_wait: 2m
+          repeat_interval: 6h
+          continue: true
 
         # Warning level alerts
         - match:
             severity: warning
-        receiver: 'general-warnings'
-        group_wait: 2m
-        repeat_interval: 6h
-        continue: false
+          receiver: 'general-warnings'
+          group_wait: 2m
+          repeat_interval: 6h
+          continue: false
 
     receivers:
       # Default receiver for unmatched alerts

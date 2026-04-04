@@ -2,8 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fluxora-frontend
+  namespace: fluxora
   labels:
     app: fluxora-frontend
+    component: frontend
+    tier: web
 spec:
   replicas: 2
   selector:
@@ -13,13 +16,32 @@ spec:
     metadata:
       labels:
         app: fluxora-frontend
+        component: frontend
+        tier: web
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: fluxora-frontend
           image: registry.example.com/app/frontend:1.0.0
           imagePullPolicy: Always
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 80
+              name: http
+              protocol: TCP
           resources:
             limits:
               cpu: 300m
@@ -31,18 +53,44 @@ spec:
             - name: REACT_APP_API_URL
               value: /api
             - name: REACT_APP_ENV
-              value: dev
+              valueFrom:
+                configMapKeyRef:
+                  name: fluxora-frontend-config
+                  key: ENVIRONMENT
+                  optional: true
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+            - name: cache-dir
+              mountPath: /var/cache/nginx
+            - name: run-dir
+              mountPath: /var/run
           livenessProbe:
             httpGet:
               path: /
               port: 80
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /
               port: 80
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: cache-dir
+          emptyDir:
+            sizeLimit: 200Mi
+        - name: run-dir
+          emptyDir:
+            sizeLimit: 10Mi
       imagePullSecrets:
         - name: regcred
+      terminationGracePeriodSeconds: 30

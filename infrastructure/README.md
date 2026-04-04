@@ -1,208 +1,138 @@
-# Fluxora Infrastructure - Production Ready
+# Fluxora Infrastructure
 
-This infrastructure has been audited, fixed, and hardened for production use.
+Financial-grade infrastructure for the Fluxora platform, compliant with **PCI DSS**, **GDPR**, and **SOC 2**.
 
-## Prerequisites
+## Architecture
 
-Install the following tools:
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Ingress / ALB                        │
+└───────────────┬─────────────────────┬───────────────────┘
+                │                     │
+        ┌───────▼──────┐     ┌────────▼─────┐
+        │   Frontend   │     │   Backend    │
+        │   (Nginx)    │     │   (Node.js)  │
+        └──────────────┘     └──────┬───────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+            ┌───────▼──────┐ ┌──────▼──────┐      │
+            │   MySQL 8.0  │ │  Redis 7.2  │      │
+            │  (StatefulSet│ │ (Deployment)│      │
+            └──────────────┘ └─────────────┘      │
+                                              Prometheus
+                                              + Grafana
+```
+
+## Quick Start (Docker Compose)
 
 ```bash
-# Terraform
-wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
-unzip terraform_1.6.0_linux_amd64.zip
-sudo mv terraform /usr/local/bin/
+# 1. Clone and set up environment
+make setup          # copies .env.example → .env
+nano .env           # fill in your secret values
 
-# kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl
-sudo mv kubectl /usr/local/bin/
+# 2. Start all services
+make up
 
-# Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-# Ansible
-pip install ansible ansible-lint
-
-# Validation tools
-pip install yamllint
-go install github.com/aquasecurity/tfsec/cmd/tfsec@latest
-wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
-tar xf kubeval-linux-amd64.tar.gz
-sudo mv kubeval /usr/local/bin/
+# 3. Verify everything is running
+make ps
+make logs
 ```
 
-## Quick Start
+Access:
 
-### 1. Terraform Infrastructure
+- **Frontend**: http://localhost:80
+- **Backend API**: http://localhost:3000
+- **Grafana**: http://localhost:3001 (admin/admin)
+- **Prometheus**: http://localhost:9091
+
+## Directory Structure
+
+```
+├── ansible/                  # Server provisioning
+│   ├── ansible.cfg
+│   ├── inventory/
+│   ├── playbooks/
+│   └── roles/
+├── compliance/               # AWS compliance automation
+│   ├── lambda/               # Compliance reporter Lambda
+│   └── main.tf
+├── config-management/        # Helm values
+├── data-encryption/          # K8s encryption config
+├── database/                 # Database cluster manifests
+├── disaster-recovery/        # Backup & recovery
+├── docker/                   # Docker support files
+│   ├── grafana/
+│   ├── mysql/
+│   ├── nginx/
+│   └── prometheus/
+├── environment-configs/      # Kustomize configuration
+├── gitops/                   # ArgoCD applications
+├── kubernetes/               # K8s base manifests
+│   ├── base/
+│   └── environments/
+├── kubernetes-scaling/       # HPA, service mesh, registry
+├── monitoring/               # Prometheus, Alertmanager, ELK, SIEM
+├── secrets-management/       # AWS Secrets Manager Terraform
+├── storage/                  # Storage class definitions
+├── terraform/                # AWS infrastructure
+│   ├── environments/
+│   └── modules/
+├── Dockerfile.backend        # Backend image
+├── Dockerfile.frontend       # Frontend image
+├── docker-compose.yml        # Development stack
+├── docker-compose.prod.yml   # Production overrides
+├── docker-compose.test.yml   # Integration test stack
+├── Makefile                  # Convenience commands
+└── .env.example              # Environment template
+```
+
+## Kubernetes Deployment
 
 ```bash
-cd terraform/
+# Apply base manifests
+make k8s-apply
 
-# Copy example configuration
-cp terraform.tfvars.example terraform.tfvars
+# Check status
+make k8s-status
 
-# Edit terraform.tfvars with your values
-vim terraform.tfvars
-
-# For local development, use local backend
-cat > backend.tf << 'BACKEND'
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-}
-BACKEND
-
-# Initialize Terraform
-terraform init
-
-# Format code
-terraform fmt -recursive
-
-# Validate configuration
-terraform validate
-
-# Review plan
-terraform plan -out=tfplan
-
-# Apply (when ready)
-# terraform apply tfplan
+# Show diff before applying
+make k8s-diff
 ```
 
-### 2. Kubernetes Deployment
+## Terraform (AWS)
 
 ```bash
-cd kubernetes/
-
-# Copy and configure secrets
-cp base/app-secrets.yaml.example base/app-secrets.yaml
-vim base/app-secrets.yaml  # Add your secrets
-
-# Validate manifests
-yamllint base/
-kubeval base/*.yaml
-
-# Dry-run deployment
-kubectl apply --dry-run=client -f base/
-
-# Apply to cluster (when ready)
-# kubectl apply -f base/
+# Initialize and plan for dev
+make tf-init ENV=dev
+make tf-plan ENV=dev
+make tf-apply ENV=dev
 ```
 
-### 3. Ansible Configuration
+## Environment Variables
 
-```bash
-cd ansible/
+| Variable                 | Description                    | Required |
+| ------------------------ | ------------------------------ | -------- |
+| `MYSQL_ROOT_PASSWORD`    | MySQL root password            | ✅       |
+| `MYSQL_PASSWORD`         | MySQL app user password        | ✅       |
+| `JWT_SECRET`             | JWT signing secret (≥32 chars) | ✅       |
+| `ENCRYPTION_KEY`         | AES encryption key (32 bytes)  | ✅       |
+| `REDIS_PASSWORD`         | Redis auth password            | ✅       |
+| `API_KEY`                | Application API key            | ✅       |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana admin password         | ✅       |
 
-# Copy inventory
-cp inventory/hosts.yml.example inventory/hosts.yml
-vim inventory/hosts.yml  # Add your hosts
+## Compliance
 
-# Test connectivity
-ansible all -m ping -i inventory/hosts.yml
+This infrastructure is designed to meet:
 
-# Run playbook in check mode
-ansible-playbook -i inventory/hosts.yml playbooks/main.yml --check
+- **PCI DSS** – Encryption at rest & in transit, audit logging, network segmentation, access controls
+- **GDPR** – Data minimisation, right to erasure support, audit trails, retention policies
+- **SOC 2** – Availability, confidentiality, security monitoring, change management
 
-# Run playbook (when ready)
-# ansible-playbook -i inventory/hosts.yml playbooks/main.yml
-```
+## Security Notes
 
-## Validation Commands
-
-Run these commands to validate the infrastructure before deployment:
-
-### Terraform Validation
-
-```bash
-cd terraform/
-terraform fmt -check -recursive
-terraform init -backend=false
-terraform validate
-tfsec .
-```
-
-Expected output:
-
-```
-Success! The configuration is valid.
-No problems detected!
-```
-
-### Kubernetes Validation
-
-```bash
-cd kubernetes/
-yamllint base/
-kubeval base/*.yaml
-kubectl apply --dry-run=client -f base/
-```
-
-### Ansible Validation
-
-```bash
-cd ansible/
-ansible-lint playbooks/
-ansible-playbook -i inventory/hosts.yml.example playbooks/main.yml --syntax-check
-```
-
-## Security Best Practices
-
-1. **Never commit secrets** - Use `.example` files for templates
-2. **Use external secrets management** - AWS Secrets Manager, HashiCorp Vault
-3. **Enable encryption** - At rest and in transit
-4. **Regular updates** - Keep dependencies and images updated
-5. **Audit logs** - Enable and monitor audit logs
-6. **Least privilege** - Use minimal IAM permissions
-
-## Deployment Workflow
-
-```mermaid
-graph LR
-    A[Validate Local] --> B[Terraform Plan]
-    B --> C[Review Changes]
-    C --> D[Apply Infrastructure]
-    D --> E[Deploy K8s]
-    E --> F[Run Ansible]
-    F --> G[Verify Deployment]
-```
-
-## Troubleshooting
-
-### Terraform Issues
-
-```bash
-# Re-initialize if provider issues
-rm -rf .terraform
-terraform init
-
-# Debug mode
-TF_LOG=DEBUG terraform plan
-```
-
-### Kubernetes Issues
-
-```bash
-# Check pod status
-kubectl get pods -n fluxora
-
-# View logs
-kubectl logs -n fluxora deployment/fluxora-backend
-
-# Describe resources
-kubectl describe pod -n fluxora POD_NAME
-```
-
-### Ansible Issues
-
-```bash
-# Verbose output
-ansible-playbook -vvv playbooks/main.yml
-
-# Check syntax
-ansible-playbook --syntax-check playbooks/main.yml
-```
-
-## Support
-
-For issues or questions, please open an issue in the repository.
+- ⚠️ **Never commit `.env` files** – use `.env.example` as template
+- ⚠️ **Never commit `terraform.tfvars`** – only `*.tfvars.example`
+- ⚠️ **Never commit `kubernetes/base/app-secrets.yaml`** – use external secrets
+- All secrets in production should use **AWS Secrets Manager** or **Vault**
+- Database passwords in `terraform.tfvars` must be set via environment variable: `TF_VAR_db_password`

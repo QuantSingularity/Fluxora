@@ -199,10 +199,9 @@ spec:
             compliance: "financial"
         spec:
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
-            fsGroup: 10001
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
 
           containers:
             - name: mysql-backup
@@ -227,7 +226,6 @@ spec:
                     --routines \
                     --triggers \
                     --all-databases \
-                    --compress \
                     --result-file="$BACKUP_DIR/full_backup.sql"
 
                   # Compress backup
@@ -237,7 +235,7 @@ spec:
                   aws s3 cp "$BACKUP_DIR/full_backup.sql.gz" \
                     "s3://fluxora-database-backups/mysql/$(date +%Y/%m/%d)/full_backup_$(date +%H%M%S).sql.gz" \
                     --server-side-encryption aws:kms \
-                    --ssm-kms-key-id "$KMS_KEY_ID"
+                    --sse-kms-key-id "$KMS_KEY_ID"
 
                   # Verify backup integrity
                   gunzip -t "$BACKUP_DIR/full_backup.sql.gz"
@@ -327,7 +325,7 @@ spec:
 
           containers:
             - name: dr-test-runner
-              image: fluxora/dr-test-runner:latest
+              image: fluxora/dr-test-runner:1.0.0
               command:
                 - /bin/bash
                 - -c

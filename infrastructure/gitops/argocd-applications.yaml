@@ -32,12 +32,11 @@ spec:
   source:
     repoURL: https://github.com/fluxora/infrastructure
     targetRevision: develop
-    path: infrastructure/environment-configs/overlays/development
+    path: environment-configs
 
     # Kustomize configuration
     kustomize:
       namePrefix: dev-
-      nameSuffix: -dev
       commonLabels:
         environment: development
         managed-by: argocd
@@ -118,11 +117,10 @@ spec:
   source:
     repoURL: https://github.com/fluxora/infrastructure
     targetRevision: staging
-    path: infrastructure/environment-configs/overlays/staging
+    path: environment-configs
 
     kustomize:
       namePrefix: staging-
-      nameSuffix: -staging
       commonLabels:
         environment: staging
         managed-by: argocd
@@ -191,7 +189,7 @@ spec:
   source:
     repoURL: https://github.com/fluxora/infrastructure
     targetRevision: main
-    path: infrastructure/environment-configs/overlays/production
+    path: environment-configs
 
     kustomize:
       commonLabels:

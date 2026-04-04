@@ -1,0 +1,60 @@
+# ─── Stage 1: Dependencies ───────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# ─── Stage 2: Builder ────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci && npm cache clean --force
+
+COPY . .
+RUN npm run build 2>/dev/null || echo "No build step defined, skipping"
+
+# ─── Stage 3: Runner (Production) ────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+LABEL org.opencontainers.image.title="Fluxora Backend"
+LABEL org.opencontainers.image.description="Fluxora financial platform backend service"
+LABEL org.opencontainers.image.vendor="Fluxora"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL compliance="pci-dss,gdpr,soc2"
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HEALTH_PORT=8080
+ENV METRICS_PORT=9090
+
+WORKDIR /app
+
+RUN apk add --no-cache \
+      dumb-init \
+      curl \
+    && addgroup --system --gid 10001 fluxora \
+    && adduser  --system --uid  10001 --ingroup fluxora --no-create-home fluxora \
+    && mkdir -p /app/cache /app/logs /app/config \
+    && chown -R fluxora:fluxora /app
+
+COPY --from=deps    --chown=fluxora:fluxora /app/node_modules ./node_modules
+COPY --from=builder --chown=fluxora:fluxora /app/dist         ./dist 2>/dev/null || true
+COPY --chown=fluxora:fluxora . .
+
+RUN chmod +x /app/scripts/*.sh 2>/dev/null || true
+
+USER fluxora
+
+EXPOSE 3000 8080 9090
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8080/health/live || exit 1
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "dist/server.js"]

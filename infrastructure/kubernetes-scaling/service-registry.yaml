@@ -1,9 +1,13 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: fluxora-service-registry
+  name: fluxora-consul
   namespace: fluxora
+  labels:
+    app: service-registry
+    component: consul
 spec:
+  serviceName: service-registry-headless
   replicas: 3
   selector:
     matchLabels:
@@ -12,10 +16,34 @@ spec:
     metadata:
       labels:
         app: service-registry
+        component: consul
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - service-registry
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: service-registry
-          image: consul:1.14.2
+          image: hashicorp/consul:1.17.1
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8500
               name: http
@@ -25,6 +53,12 @@ spec:
             - containerPort: 8600
               name: dns-tcp
               protocol: TCP
+            - containerPort: 8301
+              name: serflan
+            - containerPort: 8302
+              name: serfwan
+            - containerPort: 8300
+              name: server
           resources:
             limits:
               cpu: "500m"
@@ -33,28 +67,88 @@ spec:
               cpu: "200m"
               memory: "256Mi"
           env:
-            - name: CONSUL_BIND_INTERFACE
-              value: eth0
-            - name: CONSUL_CLIENT_INTERFACE
-              value: eth0
-          args:
-            - "agent"
-            - "-server"
-            - "-bootstrap-expect=3"
-            - "-ui"
-            - "-client=0.0.0.0"
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command:
+            - consul
+            - agent
+            - -server
+            - -bootstrap-expect=3
+            - -ui
+            - -client=0.0.0.0
+            - -bind=0.0.0.0
+            - -advertise=$(POD_IP)
+            - -data-dir=/consul/data
+            - -retry-join=service-registry-headless.$(NAMESPACE).svc.cluster.local
+          volumeMounts:
+            - name: consul-data
+              mountPath: /consul/data
+            - name: tmp-dir
+              mountPath: /tmp
           livenessProbe:
-            httpGet:
-              path: /v1/status/leader
-              port: 8500
+            exec:
+              command:
+                - consul
+                - members
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /v1/status/leader
               port: 8500
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 50Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: consul-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-registry-headless
+  namespace: fluxora
+spec:
+  clusterIP: None
+  selector:
+    app: service-registry
+  ports:
+    - name: http
+      port: 8500
+      targetPort: 8500
+    - name: server
+      port: 8300
+      targetPort: 8300
+    - name: serflan
+      port: 8301
+      targetPort: 8301
+    - name: serfwan
+      port: 8302
+      targetPort: 8302
+
 ---
 apiVersion: v1
 kind: Service

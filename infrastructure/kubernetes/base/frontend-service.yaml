@@ -2,8 +2,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: fluxora-frontend
+  namespace: fluxora
   labels:
     app: fluxora-frontend
+    component: frontend
 spec:
   type: ClusterIP
   ports:

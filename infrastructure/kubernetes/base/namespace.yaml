@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fluxora
+  labels:
+    app.kubernetes.io/name: fluxora
+    app.kubernetes.io/part-of: fluxora-platform
+    compliance: "pci-dss,gdpr,soc2"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

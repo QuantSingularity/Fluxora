@@ -2,6 +2,7 @@
 # This module provides secure secrets management using AWS Secrets Manager and Parameter Store
 
 terraform {
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -77,8 +78,9 @@ resource "aws_kms_alias" "secrets" {
 
 # Database Credentials
 resource "random_password" "db_master_password" {
-  length  = 32
-  special = true
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 resource "aws_secretsmanager_secret" "db_master_credentials" {
@@ -87,9 +89,11 @@ resource "aws_secretsmanager_secret" "db_master_credentials" {
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 
-  replica {
-    region     = var.replica_region
-    kms_key_id = aws_kms_key.secrets.arn
+  dynamic "replica" {
+    for_each = var.replica_region != "" && var.replica_region != data.aws_region.current.name ? [1] : []
+    content {
+      region = var.replica_region
+    }
   }
 
   tags = merge(var.common_tags, {
@@ -112,8 +116,9 @@ resource "aws_secretsmanager_secret_version" "db_master_credentials" {
 
 # Application Database User Credentials
 resource "random_password" "db_app_password" {
-  length  = 32
-  special = true
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 resource "aws_secretsmanager_secret" "db_app_credentials" {
@@ -122,9 +127,11 @@ resource "aws_secretsmanager_secret" "db_app_credentials" {
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 
-  replica {
-    region     = var.replica_region
-    kms_key_id = aws_kms_key.secrets.arn
+  dynamic "replica" {
+    for_each = var.replica_region != "" && var.replica_region != data.aws_region.current.name ? [1] : []
+    content {
+      region = var.replica_region
+    }
   }
 
   tags = merge(var.common_tags, {
@@ -157,9 +164,11 @@ resource "aws_secretsmanager_secret" "redis_credentials" {
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 
-  replica {
-    region     = var.replica_region
-    kms_key_id = aws_kms_key.secrets.arn
+  dynamic "replica" {
+    for_each = var.replica_region != "" && var.replica_region != data.aws_region.current.name ? [1] : []
+    content {
+      region = var.replica_region
+    }
   }
 
   tags = merge(var.common_tags, {
@@ -194,9 +203,11 @@ resource "aws_secretsmanager_secret" "app_secrets" {
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 
-  replica {
-    region     = var.replica_region
-    kms_key_id = aws_kms_key.secrets.arn
+  dynamic "replica" {
+    for_each = var.replica_region != "" && var.replica_region != data.aws_region.current.name ? [1] : []
+    content {
+      region = var.replica_region
+    }
   }
 
   tags = merge(var.common_tags, {
@@ -221,9 +232,11 @@ resource "aws_secretsmanager_secret" "external_apis" {
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 
-  replica {
-    region     = var.replica_region
-    kms_key_id = aws_kms_key.secrets.arn
+  dynamic "replica" {
+    for_each = var.replica_region != "" && var.replica_region != data.aws_region.current.name ? [1] : []
+    content {
+      region = var.replica_region
+    }
   }
 
   tags = merge(var.common_tags, {
@@ -244,9 +257,11 @@ resource "aws_secretsmanager_secret" "ssl_certificates" {
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
 
-  replica {
-    region     = var.replica_region
-    kms_key_id = aws_kms_key.secrets.arn
+  dynamic "replica" {
+    for_each = var.replica_region != "" && var.replica_region != data.aws_region.current.name ? [1] : []
+    content {
+      region = var.replica_region
+    }
   }
 
   tags = merge(var.common_tags, {

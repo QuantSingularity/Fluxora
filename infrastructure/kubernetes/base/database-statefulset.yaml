@@ -2,8 +2,11 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: fluxora-database
+  namespace: fluxora
   labels:
     app: fluxora-database
+    component: database
+    tier: data
 spec:
   serviceName: fluxora-database
   replicas: 1
@@ -14,13 +17,24 @@ spec:
     metadata:
       labels:
         app: fluxora-database
+        component: database
+        tier: data
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: fluxora-database
           image: mysql:8.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3306
+              name: mysql
+              protocol: TCP
           resources:
             limits:
               cpu: 1000m
@@ -49,22 +63,23 @@ spec:
           livenessProbe:
             exec:
               command:
-                ["mysqladmin", "ping", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+                - /bin/bash
+                - -c
+                - 'mysqladmin ping -u root -p"${MYSQL_ROOT_PASSWORD}" --silent'
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
               command:
-                [
-                  "mysql",
-                  "-u",
-                  "root",
-                  "-p${MYSQL_ROOT_PASSWORD}",
-                  "-e",
-                  "SELECT 1",
-                ]
-            initialDelaySeconds: 5
+                - /bin/bash
+                - -c
+                - 'mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e ''SELECT 1'' --silent'
+            initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
   volumeClaimTemplates:
     - metadata:
         name: fluxora-database-data

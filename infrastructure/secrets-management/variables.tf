@@ -37,7 +37,7 @@ variable "kms_deletion_window" {
 variable "replica_region" {
   description = "AWS region for secrets replication"
   type        = string
-  default     = "us-west-2"
+  default     = ""
 }
 
 # Database Configuration

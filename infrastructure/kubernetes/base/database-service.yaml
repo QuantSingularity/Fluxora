@@ -2,10 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: fluxora-database
+  namespace: fluxora
   labels:
     app: fluxora-database
+    component: database
 spec:
   type: ClusterIP
+  clusterIP: None
   ports:
     - port: 3306
       targetPort: 3306

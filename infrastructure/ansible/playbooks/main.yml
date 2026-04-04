@@ -1,9 +1,9 @@
 ---
-# main.yml - Main playbook that includes all other playbooks
 - name: Configure web servers
   hosts: webservers
   become: true
-  become_user: root
+  become_method: sudo
+  gather_facts: true
   roles:
     - common
     - webserver
@@ -11,7 +11,8 @@
 - name: Configure database servers
   hosts: databases
   become: true
-  become_user: root
+  become_method: sudo
+  gather_facts: true
   roles:
     - common
     - database

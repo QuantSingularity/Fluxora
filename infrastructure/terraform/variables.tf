@@ -7,11 +7,16 @@ variable "aws_region" {
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
 }
 
 variable "app_name" {
   description = "Application name"
   type        = string
+  default     = "fluxora"
 }
 
 variable "vpc_cidr" {
@@ -50,6 +55,12 @@ variable "key_name" {
   default     = null
 }
 
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for HTTPS listener"
+  type        = string
+  default     = ""
+}
+
 variable "db_instance_class" {
   description = "RDS instance class"
   type        = string
@@ -59,6 +70,7 @@ variable "db_instance_class" {
 variable "db_name" {
   description = "Database name"
   type        = string
+  default     = "fluxora_db"
 }
 
 variable "db_username" {
@@ -79,11 +91,13 @@ variable "default_tags" {
   default = {
     Terraform   = "true"
     Environment = "dev"
+    Project     = "fluxora"
+    ManagedBy   = "terraform"
   }
 }
 
 variable "admin_cidr_blocks" {
   description = "CIDR blocks allowed for administrative access"
   type        = list(string)
-  default     = ["10.0.0.0/8"]  # Restrict in production
+  default     = ["10.0.0.0/8"]
 }

@@ -1,6 +1,6 @@
 aws_region  = "us-west-2"
 environment = "dev"
-app_name    = "app"
+app_name    = "fluxora"
 
 vpc_cidr             = "10.0.0.0/16"
 availability_zones   = ["us-west-2a", "us-west-2b", "us-west-2c"]
@@ -11,12 +11,15 @@ instance_type = "t3.micro"
 key_name      = "dev-key"
 
 db_instance_class = "db.t3.micro"
-db_name           = "appdb"
+db_name           = "fluxoradb"
 db_username       = "admin"
-db_password       = "Password123!" # Use AWS Secrets Manager in production
+db_password       = "CHANGE_ME_USE_SECRETS_MANAGER"
 
 default_tags = {
   Terraform   = "true"
   Environment = "dev"
-  Project     = "app"
+  Project     = "fluxora"
+  ManagedBy   = "terraform"
 }
+
+admin_cidr_blocks = ["10.0.0.0/8"]

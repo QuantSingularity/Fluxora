@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -29,6 +29,7 @@ resource "aws_subnet" "public" {
   tags = {
     Name        = "${var.environment}-public-subnet-${count.index + 1}"
     Environment = var.environment
+    Tier        = "public"
   }
 }
 
@@ -41,6 +42,7 @@ resource "aws_subnet" "private" {
   tags = {
     Name        = "${var.environment}-private-subnet-${count.index + 1}"
     Environment = var.environment
+    Tier        = "private"
   }
 }
 
@@ -54,13 +56,15 @@ resource "aws_internet_gateway" "main" {
 }
 
 resource "aws_eip" "nat" {
-  count = length(var.public_subnet_cidrs)
-  vpc   = true
+  count  = length(var.public_subnet_cidrs)
+  domain = "vpc"
 
   tags = {
     Name        = "${var.environment}-nat-eip-${count.index + 1}"
     Environment = var.environment
   }
+
+  depends_on = [aws_internet_gateway.main]
 }
 
 resource "aws_nat_gateway" "main" {
