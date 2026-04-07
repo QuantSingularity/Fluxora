@@ -57,15 +57,25 @@ class ErrorResponse:
 def add_error_handlers(app: FastAPI) -> None:
     """Add error handlers to the FastAPI application"""
 
+    def _make_serializable(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return {k: _make_serializable(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_make_serializable(i) for i in obj]
+        if isinstance(obj, Exception):
+            return str(obj)
+        return obj
+
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        serializable_errors = _make_serializable(exc.errors())
         error_detail = ErrorDetail(
             code="VALIDATION_ERROR",
             message="Request validation failed",
             detail=str(exc),
-            context={"errors": exc.errors()},
+            context={"errors": serializable_errors},
         )
         error_response = ErrorResponse(
             error=error_detail,

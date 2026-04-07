@@ -77,6 +77,8 @@ metadata:
 spec:
   host: fluxora-backend
   trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
     loadBalancer:
       simple: LEAST_CONN
     connectionPool:
@@ -94,6 +96,3 @@ spec:
       interval: 30s
       baseEjectionTime: 30s
       maxEjectionPercent: 50
-  trafficPolicy:
-    tls:
-      mode: ISTIO_MUTUAL
