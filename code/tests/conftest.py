@@ -1,15 +1,15 @@
 """
-Shared pytest fixtures for Fluxora test suite.
+Shared pytest fixtures for the Fluxora test suite.
 """
 
-import models.data  # noqa: F401
-import models.user  # noqa: F401
+import app.models.data  # noqa: F401 – registers EnergyData
+import app.models.user  # noqa: F401 – registers User
 import pytest
-from backend.dependencies import get_db
-from backend.security import _get_db, get_password_hash
+from app.core.security import _get_db, get_password_hash
+from app.db.dependencies import get_db
+from app.main import app
+from app.models.base import Base
 from fastapi.testclient import TestClient
-from main import app
-from models.base import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -41,8 +41,6 @@ def db_session():
 
 
 def _override_get_db(db_session):
-    """Return a FastAPI dependency override that yields the given session."""
-
     def _inner():
         try:
             yield db_session
@@ -54,8 +52,6 @@ def _override_get_db(db_session):
 
 @pytest.fixture()
 def client(db_session):
-    # Override BOTH get_db and _get_db so security.py's chain also uses
-    # the test session.
     override = _override_get_db(db_session)
     app.dependency_overrides[get_db] = override
     app.dependency_overrides[_get_db] = override
@@ -66,7 +62,7 @@ def client(db_session):
 
 @pytest.fixture()
 def test_user(db_session):
-    from models.user import User
+    from app.models.user import User
 
     user = User(
         email="test@example.com",
@@ -82,7 +78,7 @@ def test_user(db_session):
 
 @pytest.fixture()
 def superuser(db_session):
-    from models.user import User
+    from app.models.user import User
 
     user = User(
         email="admin@example.com",
@@ -98,7 +94,7 @@ def superuser(db_session):
 
 @pytest.fixture()
 def inactive_user(db_session):
-    from models.user import User
+    from app.models.user import User
 
     user = User(
         email="inactive@example.com",
@@ -136,7 +132,6 @@ def superuser_auth_headers(client, superuser):
 
 @pytest.fixture()
 def sample_energy_record(client, auth_headers):
-    """Creates and returns a single energy record for the test user."""
     response = client.post(
         "/v1/data/",
         headers=auth_headers,
@@ -149,3 +144,18 @@ def sample_energy_record(client, auth_headers):
     )
     assert response.status_code == 201
     return response.json()
+
+
+@pytest.fixture()
+def multiple_energy_records(client, auth_headers):
+    """Creates 5 energy records for pagination / list tests."""
+    records = []
+    for i in range(1, 6):
+        r = client.post(
+            "/v1/data/",
+            headers=auth_headers,
+            json={"consumption_kwh": float(i * 10), "cost_usd": float(i)},
+        )
+        assert r.status_code == 201
+        records.append(r.json())
+    return records

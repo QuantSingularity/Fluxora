@@ -1,12 +1,7 @@
 import os
 from logging.config import fileConfig
 
-import models.data  # noqa: F401
-import models.user  # noqa: F401
 from alembic import context
-
-# Load application models so metadata is populated
-from models.base import Base
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
@@ -14,10 +9,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override sqlalchemy.url from env if present
-db_url = os.getenv("DATABASE_URL")
-if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+# Override sqlalchemy.url from environment if set
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
+import app.models.data  # noqa: F401, E402
+import app.models.user  # noqa: F401, E402
+from app.models.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 

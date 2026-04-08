@@ -1,50 +1,60 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 *.so
-.Python
+*.egg
 *.egg-info/
 dist/
 build/
 .eggs/
+.Python
+pip-wheel-metadata/
 
-# Environments
-.env
+# Virtual environments
 .venv/
 venv/
 env/
 ENV/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Environment files (never commit secrets)
+.env
+*.env
 
-# Testing
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Model artifacts
+*.joblib
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Test / coverage
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
 coverage.xml
+*.cover
+nosetests.xml
 
-# Database
-*.db
-*.sqlite
-
-# Model artefacts
-*.joblib
-*.pkl
-models/*/latest/
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
 
 # Logs
 *.log
 logs/
 
-# macOS
-.DS_Store
+# Alembic
+alembic.ini.local
 
-# Docker secrets
-*.pem
-*.key
+# Docker
+.dockerignore

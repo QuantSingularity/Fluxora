@@ -1,5 +1,0 @@
-feature_params:
-  lag_features: [24, 168]
-  rolling_windows: [24, 168]
-  fourier_order: 5
-  holiday_country: "PT"
