@@ -3,7 +3,14 @@ class FluxoraError(Exception):
 
 
 class DataValidationError(FluxoraError):
-    """Raised when data fails quality checks."""
+    """Raised when data fails quality checks.
+
+    Note: ``ml_core.data_validator`` defines its own ``DataValidationError``
+    that intentionally does NOT inherit from ``FluxoraError`` so that
+    ml_core remains importable without the full backend stack.  This class
+    is the API-layer counterpart and should be used in FastAPI route handlers
+    and CRUD code.
+    """
 
 
 class ModelServicingError(FluxoraError):

@@ -1,11 +1,28 @@
+"""
+Fluxora FastAPI application factory.
+
+sys.path is extended here (before any ml_core imports) so that the
+ml_core package – which lives one directory above backend/ – is always
+importable regardless of how the server is started.
+"""
+
 import logging
 import os
+import sys
 import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+
+# ---------------------------------------------------------------------------
+# Make the project root (parent of backend/) importable so `ml_core` can be
+# found regardless of the working directory.
+# ---------------------------------------------------------------------------
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -46,7 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.core.error_middleware import add_error_handlers
+from app.core.error_middleware import add_error_handlers  # noqa: E402
 
 add_error_handlers(app)
 
@@ -63,7 +80,7 @@ async def log_requests(request: Request, call_next: Any) -> Any:
     return response
 
 
-from app.api.v1 import analytics, auth, data, predictions
+from app.api.v1 import analytics, auth, data, predictions  # noqa: E402
 
 app.include_router(auth.router, prefix="/v1")
 app.include_router(data.router, prefix="/v1")

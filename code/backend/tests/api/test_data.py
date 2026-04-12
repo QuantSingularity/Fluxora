@@ -161,7 +161,7 @@ def test_read_records(client: TestClient, auth_headers: dict):
 
 
 def test_read_records_only_own(client: TestClient, auth_headers: dict, db_session):
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from app.core.security import get_password_hash
     from app.models.data import EnergyData
@@ -177,7 +177,9 @@ def test_read_records_only_own(client: TestClient, auth_headers: dict, db_sessio
     db_session.commit()
     db_session.refresh(other)
     record = EnergyData(
-        user_id=other.id, consumption_kwh=99.9, timestamp=datetime.utcnow()
+        user_id=other.id,
+        consumption_kwh=99.9,
+        timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db_session.add(record)
     db_session.commit()
@@ -240,7 +242,7 @@ def test_get_nonexistent_record(client: TestClient, auth_headers: dict):
 
 
 def test_get_another_users_record(client: TestClient, auth_headers: dict, db_session):
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from app.core.security import get_password_hash
     from app.models.data import EnergyData
@@ -256,7 +258,9 @@ def test_get_another_users_record(client: TestClient, auth_headers: dict, db_ses
     db_session.commit()
     db_session.refresh(other)
     record = EnergyData(
-        user_id=other.id, consumption_kwh=99.9, timestamp=datetime.utcnow()
+        user_id=other.id,
+        consumption_kwh=99.9,
+        timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db_session.add(record)
     db_session.commit()
@@ -360,7 +364,7 @@ def test_delete_record_unauthenticated(client: TestClient, sample_energy_record:
 def test_delete_another_users_record(
     client: TestClient, auth_headers: dict, db_session
 ):
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from app.core.security import get_password_hash
     from app.models.data import EnergyData
@@ -375,7 +379,9 @@ def test_delete_another_users_record(
     db_session.commit()
     db_session.refresh(other)
     record = EnergyData(
-        user_id=other.id, consumption_kwh=50.0, timestamp=datetime.utcnow()
+        user_id=other.id,
+        consumption_kwh=50.0,
+        timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     db_session.add(record)
     db_session.commit()

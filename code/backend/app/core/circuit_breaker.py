@@ -20,8 +20,8 @@ class CircuitBreaker:
     Thread-safe circuit breaker implementation.
 
     States:
-      CLOSED  → normal operation; failures are counted.
-      OPEN    → calls are blocked; fallback is used if configured.
+      CLOSED    → normal operation; failures are counted.
+      OPEN      → calls are blocked; fallback is used if configured.
       HALF_OPEN → one probe call is allowed after recovery_timeout elapses.
     """
 

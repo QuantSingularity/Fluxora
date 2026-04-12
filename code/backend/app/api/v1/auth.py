@@ -25,7 +25,7 @@ def _validate_password(password: str) -> None:
     """Raise HTTP 422 when password does not meet minimum requirements."""
     if len(password) < _MIN_PASSWORD_LENGTH:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Password must be at least {_MIN_PASSWORD_LENGTH} characters long.",
         )
 

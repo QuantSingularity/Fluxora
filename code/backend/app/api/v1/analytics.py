@@ -25,9 +25,32 @@ class AnalyticsPoint(BaseModel):
     efficiency: float
 
 
+def _compute_efficiency(consumption: pd.Series, temperature: pd.Series) -> pd.Series:
+    """
+    Compute a normalised efficiency score in [0, 100].
+
+    Formula: efficiency = 100 * (1 - consumption / (consumption.max() + ε))
+    This gives 100 when consumption is 0 and approaches 0 as consumption
+    approaches the observed maximum.  Temperature is intentionally excluded
+    because dividing consumption by temperature produces physically
+    meaningless results when temperature is near zero or negative.
+
+    Bug fix: the original formula ``100 - consumption / temp`` produced
+    values far outside [0, 100] whenever temperature was small, and the
+    direction was wrong (higher temperature → lower divisor → lower
+    efficiency score even for the same consumption).
+    """
+    max_consumption = consumption.max()
+    if max_consumption == 0:
+        return pd.Series(100.0, index=consumption.index)
+    efficiency = 100.0 * (1.0 - consumption / (max_consumption + 1e-9))
+    return efficiency.clip(lower=0.0, upper=100.0)
+
+
 def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str, Any]]:
     if not records:
         return []
+
     rows = []
     for r in records:
         rows.append(
@@ -38,12 +61,12 @@ def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str
                 "temperature_c": (
                     None
                     if getattr(r, "temperature_c", None) is None
-                    else float(getattr(r, "temperature_c"))
+                    else float(r.temperature_c)  # type: ignore[arg-type]
                 ),
                 "humidity_percent": (
                     None
                     if getattr(r, "humidity_percent", None) is None
-                    else float(getattr(r, "humidity_percent"))
+                    else float(r.humidity_percent)  # type: ignore[arg-type]
                 ),
             }
         )
@@ -77,9 +100,10 @@ def calculate_analytics(records: List[EnergyData], period: str) -> List[Dict[str
     aggregated["consumption_kwh"] = aggregated["consumption_kwh"].fillna(0.0)
     aggregated["cost_usd"] = aggregated["cost_usd"].fillna(0.0)
 
-    temp_for_eff = aggregated["temperature_c"].fillna(20.0).replace(0.0, 1.0)
-    raw_efficiency = 100.0 - aggregated["consumption_kwh"] / temp_for_eff
-    aggregated["efficiency"] = raw_efficiency.clip(lower=0.0, upper=100.0)
+    # Fixed efficiency: normalised relative to the period's maximum consumption
+    aggregated["efficiency"] = _compute_efficiency(
+        aggregated["consumption_kwh"], aggregated["temperature_c"]
+    )
 
     results: List[Dict[str, Any]] = []
     for _, row in aggregated.iterrows():

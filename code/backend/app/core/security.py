@@ -86,7 +86,13 @@ def decode_refresh_token(token: str) -> TokenData:
 
 
 def _get_db() -> Generator[Session, None, None]:
-    """Re-export of app.db.dependencies.get_db for use inside this module."""
+    """
+    Thin re-export of ``app.db.dependencies.get_db``.
+
+    Kept as a named symbol so that test fixtures can override it via
+    ``app.dependency_overrides[_get_db] = ...`` alongside the primary
+    ``get_db`` override, ensuring every injection point is covered.
+    """
     from app.db.dependencies import get_db
 
     yield from get_db()

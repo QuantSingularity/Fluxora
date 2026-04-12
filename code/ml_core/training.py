@@ -1,3 +1,5 @@
+"""Model training pipeline for Fluxora."""
+
 import logging
 import os
 from datetime import datetime, timedelta
@@ -6,6 +8,9 @@ from typing import Any, Tuple
 import joblib
 import numpy as np
 import pandas as pd
+
+# Import from ml_core (sibling module) – no longer from app.services
+from ml_core.feature_engineering import preprocess_data_for_model
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -18,11 +23,13 @@ MODEL_PATH = os.path.join(os.getcwd(), "fluxora_model.joblib")
 def load_data_from_db(db_session: Any = None) -> pd.DataFrame:
     """
     Loads all energy data from the database.
-    Falls back to synthetic data when no session is provided or DB is empty.
+    Falls back to synthetic data when no session is provided or the DB is empty.
     """
     if db_session is not None:
         try:
-            from app.models.data import EnergyData
+            # Lazy import keeps ml_core decoupled from the ORM layer;
+            # callers are expected to have the backend on sys.path.
+            from app.models.data import EnergyData  # type: ignore[import]
 
             records = db_session.query(EnergyData).order_by(EnergyData.timestamp).all()
             if records:
@@ -38,13 +45,14 @@ def load_data_from_db(db_session: Any = None) -> pd.DataFrame:
         except Exception as e:
             logger.warning(f"Could not load data from DB, using synthetic: {e}")
 
+    # --- Synthetic fallback ---
     start_time = datetime.now() - timedelta(days=30)
     timestamps = [start_time + timedelta(hours=i) for i in range(30 * 24)]
-    time_series_index = np.arange(len(timestamps))
-    daily_cycle = np.sin(time_series_index * 2 * np.pi / 24) * 10
-    weekly_cycle = np.sin(time_series_index * 2 * np.pi / (24 * 7)) * 20
+    idx = np.arange(len(timestamps))
+    daily_cycle = np.sin(idx * 2 * np.pi / 24) * 10
+    weekly_cycle = np.sin(idx * 2 * np.pi / (24 * 7)) * 20
     base_load = 50
-    noise = np.random.normal(0, 5, len(timestamps))
+    noise = np.random.default_rng(seed=42).normal(0, 5, len(timestamps))
     consumption = np.abs(base_load + daily_cycle + weekly_cycle + noise)
     return pd.DataFrame(
         {"timestamp": timestamps, "consumption_kwh": consumption, "user_id": 1}
@@ -53,8 +61,6 @@ def load_data_from_db(db_session: Any = None) -> pd.DataFrame:
 
 def train_model(df: pd.DataFrame) -> Tuple[RandomForestRegressor, dict]:
     """Trains a RandomForestRegressor on the processed data."""
-    from app.services.feature_engineering import preprocess_data_for_model
-
     processed_df = preprocess_data_for_model(df.copy())
     target_col = "consumption_kwh"
     features = [
@@ -62,14 +68,20 @@ def train_model(df: pd.DataFrame) -> Tuple[RandomForestRegressor, dict]:
         for col in processed_df.columns
         if col not in [target_col, "timestamp", "user_id"]
     ]
+
+    if not features:
+        raise ValueError("No feature columns found after preprocessing.")
+
     X = processed_df[features]
     y = processed_df[target_col]
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, shuffle=False
     )
     model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
     metrics = {
@@ -80,16 +92,17 @@ def train_model(df: pd.DataFrame) -> Tuple[RandomForestRegressor, dict]:
         "test_samples": len(X_test),
     }
     logger.info(f"Model Training Complete. MSE: {mse:.4f}, R2: {r2:.4f}")
-    return (model, metrics)
+    return model, metrics
 
 
 def save_model(model: RandomForestRegressor, path: str = "") -> None:
     """Saves the trained model to disk."""
-    if not path:
-        path = MODEL_PATH
-    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
-    joblib.dump(model, path)
-    logger.info(f"Model saved to {path}")
+    save_path = path or MODEL_PATH
+    dir_name = os.path.dirname(save_path)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
+    joblib.dump(model, save_path)
+    logger.info(f"Model saved to {save_path}")
 
 
 def run_training_pipeline(db_session: Any = None, model_path: str = "") -> dict:

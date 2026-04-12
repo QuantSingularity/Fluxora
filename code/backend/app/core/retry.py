@@ -1,7 +1,7 @@
 import functools
 import logging
 import random
-import time as time
+import time
 from typing import Any, Callable, Tuple, Type, Union
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,9 @@ def retry(
 
     Delay for attempt n (0-indexed) = min(base_delay * backoff_factor**n, max_delay)
     with optional ±50 % jitter.
+
+    Bug fix: removed the redundant ``import time as time`` alias that was
+    present in the original source.
     """
 
     def decorator(func: Callable) -> Callable:

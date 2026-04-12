@@ -1,100 +1,94 @@
-# Fluxora API
+# Fluxora
 
-Energy data management and prediction API built with FastAPI.
+Energy data management and ML-powered consumption prediction platform.
 
 ## Project Structure
 
 ```
 fluxora/
-├── app/
-│   ├── api/
-│   │   └── v1/             # Route handlers
-│   │       ├── auth.py     # Authentication endpoints
-│   │       ├── data.py     # Energy data CRUD endpoints
-│   │       ├── analytics.py
-│   │       └── predictions.py
-│   ├── core/               # Core utilities
-│   │   ├── security.py     # JWT auth, password hashing
-│   │   ├── config.py       # Configuration loader
-│   │   ├── exceptions.py   # Custom exception classes
-│   │   ├── circuit_breaker.py
-│   │   ├── retry.py
-│   │   ├── fallback.py
-│   │   └── error_middleware.py
-│   ├── crud/               # Database operations
-│   │   ├── user.py
-│   │   └── data.py
-│   ├── db/                 # Database setup
-│   │   ├── database.py
-│   │   └── dependencies.py
-│   ├── models/             # SQLAlchemy ORM models
-│   │   ├── base.py
-│   │   ├── user.py
-│   │   └── data.py
-│   ├── schemas/            # Pydantic schemas
-│   │   ├── user.py
-│   │   └── data.py
-│   └── services/           # Business logic
-│       ├── feature_engineering.py
-│       ├── temporal_features.py
-│       ├── data_validator.py
-│       └── training.py
-├── tests/
-│   ├── api/                # API endpoint tests
-│   ├── integration/        # CRUD + service integration tests
-│   └── unit/               # Pure unit tests
-├── migrations/             # Alembic migrations
-├── main.py                 # Entry point
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-└── pytest.ini
+├── backend/          # FastAPI REST API
+│   ├── app/
+│   │   ├── api/v1/   # Route handlers (auth, data, analytics, predictions)
+│   │   ├── core/     # Security, config, circuit-breaker, retry, fallback, middleware
+│   │   ├── crud/     # Database CRUD helpers
+│   │   ├── db/       # SQLAlchemy engine & session factory
+│   │   ├── models/   # ORM models
+│   │   └── schemas/  # Pydantic schemas
+│   ├── migrations/   # Alembic database migrations
+│   ├── tests/        # pytest suite (api / integration / unit)
+│   ├── main.py       # Uvicorn entry point
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── docker-compose.yml
+│
+└── ml_core/          # Machine-learning package (framework-independent)
+    ├── __init__.py
+    ├── data_validator.py      # DataFrame validation helpers
+    ├── feature_engineering.py # Time-series, lag, rolling features
+    ├── temporal_features.py   # Cyclical & calendar features
+    ├── training.py            # RandomForest training pipeline
+    └── requirements.txt
 ```
 
 ## Quick Start
 
-```bash
-# 1. Create a virtual environment
-python -m venv .venv && source .venv/bin/activate
+### 1. Install dependencies
 
-# 2. Install dependencies
+```bash
+cd backend
 pip install -r requirements.txt
-
-# 3. Copy environment file and edit as needed
-cp .env.example .env
-
-# 4. Run the API
-uvicorn app.main:app --reload
-
-# API docs available at http://localhost:8000/docs
 ```
 
-## Running Tests
+### 2. Configure environment
 
 ```bash
-pytest tests/ -v
+cp .env.example .env
+# Edit .env with your DATABASE_URL, SECRET_KEY, etc.
 ```
 
-## API Endpoints
+### 3. Run database migrations
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | /v1/auth/register | Register a new user |
-| POST | /v1/auth/token | Login (get access + refresh tokens) |
-| POST | /v1/auth/refresh | Refresh access token |
-| GET | /v1/auth/me | Current user profile |
-| POST | /v1/data/ | Create energy record |
-| GET | /v1/data/ | List energy records |
-| GET | /v1/data/{id} | Get single record |
-| PATCH | /v1/data/{id} | Update record |
-| DELETE | /v1/data/{id} | Delete record |
-| GET | /v1/data/query | Time-range query |
-| GET | /v1/analytics/ | Aggregated analytics |
-| GET | /v1/analytics/summary | 30-day summary |
-| GET | /v1/predictions/ | Consumption forecast |
-| POST | /v1/predictions/train | Trigger model training (superuser) |
-| GET | /health | Health check |
+```bash
+cd backend
+alembic upgrade head
+```
 
-## Environment Variables
+### 4. Start the API server
 
-See `.env.example` for all available configuration options.
+```bash
+cd backend
+python main.py
+# or
+uvicorn app.main:app --reload
+```
+
+API docs available at http://localhost:8000/docs
+
+### 5. Run tests
+
+```bash
+cd backend
+pytest
+```
+
+## ml_core Package
+
+`ml_core` is intentionally framework-independent – it depends only on
+`numpy`, `pandas`, `scikit-learn`, and `joblib`. It can be imported by
+external pipelines, notebooks, or batch jobs without pulling in FastAPI or
+SQLAlchemy.
+
+The backend's `app/main.py` and `backend/main.py` both insert the project
+root into `sys.path` so `ml_core` is discoverable at runtime. When running
+pytest from `backend/`, `tests/conftest.py` performs the same insertion.
+
+## Key Fixes Applied
+
+| Area                | Fix                                                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `predictions.py`    | Rewrote iterative prediction loop — lag features now reference the correct previous step, and time features use the actual future timestamp |
+| `analytics.py`      | Replaced broken efficiency formula (`100 − kwh/temp`) with a properly normalised score `100 × (1 − kwh/max_kwh)`                            |
+| `retry.py`          | Removed redundant `import time as time` self-alias                                                                                          |
+| `training.py`       | Replaced deprecated `np.random.normal` global call with `np.random.default_rng(seed=42)` for reproducibility                                |
+| `migrations/env.py` | Added `sys.path` guard so Alembic resolves `app.*` regardless of working directory                                                          |
+| All imports         | Updated every `from app.services.*` reference to `from ml_core.*` across source and tests                                                   |

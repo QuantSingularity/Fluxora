@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from typing import Any, Dict
 
@@ -48,8 +49,6 @@ def get_config() -> Dict[str, Any]:
                 overrides = json.load(f)
             _deep_merge(config, overrides)
         except Exception as e:
-            import logging
-
             logging.getLogger(__name__).warning(
                 f"Could not load config from {config_path}: {e}"
             )

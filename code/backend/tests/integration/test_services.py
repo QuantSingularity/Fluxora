@@ -10,7 +10,7 @@ import pytest
 
 class TestFeatureEngineering:
     def test_create_time_series_features(self):
-        from app.services.feature_engineering import create_time_series_features
+        from ml_core.feature_engineering import create_time_series_features
 
         df = pd.DataFrame(
             {"timestamp": pd.date_range("2024-01-01", periods=5, freq="h")}
@@ -20,7 +20,7 @@ class TestFeatureEngineering:
             assert col in result.columns
 
     def test_create_lag_features(self):
-        from app.services.feature_engineering import create_lag_features
+        from ml_core.feature_engineering import create_lag_features
 
         df = pd.DataFrame({"consumption_kwh": range(10)})
         result = create_lag_features(df, "consumption_kwh", lags=[1, 2])
@@ -28,7 +28,7 @@ class TestFeatureEngineering:
         assert "consumption_kwh_lag_2" in result.columns
 
     def test_lag_feature_values_correct(self):
-        from app.services.feature_engineering import create_lag_features
+        from ml_core.feature_engineering import create_lag_features
 
         df = pd.DataFrame({"consumption_kwh": [10.0, 20.0, 30.0]})
         result = create_lag_features(df, "consumption_kwh", lags=[1])
@@ -37,7 +37,7 @@ class TestFeatureEngineering:
         assert result["consumption_kwh_lag_1"].iloc[2] == 20.0
 
     def test_create_rolling_features(self):
-        from app.services.feature_engineering import create_rolling_features
+        from ml_core.feature_engineering import create_rolling_features
 
         df = pd.DataFrame({"consumption_kwh": range(20)})
         result = create_rolling_features(df, "consumption_kwh", windows=[3])
@@ -45,14 +45,14 @@ class TestFeatureEngineering:
         assert "consumption_kwh_rolling_std_3" in result.columns
 
     def test_rolling_mean_correct(self):
-        from app.services.feature_engineering import create_rolling_features
+        from ml_core.feature_engineering import create_rolling_features
 
         df = pd.DataFrame({"consumption_kwh": [1.0, 2.0, 3.0, 4.0, 5.0]})
         result = create_rolling_features(df, "consumption_kwh", windows=[3])
         assert result["consumption_kwh_rolling_mean_3"].iloc[2] == pytest.approx(2.0)
 
     def test_preprocess_pipeline_drops_nan_rows(self):
-        from app.services.feature_engineering import preprocess_data_for_model
+        from ml_core.feature_engineering import preprocess_data_for_model
 
         df = pd.DataFrame(
             {
@@ -66,7 +66,7 @@ class TestFeatureEngineering:
         assert len(result) < len(df)
 
     def test_preprocess_does_not_mutate_input(self):
-        from app.services.feature_engineering import preprocess_data_for_model
+        from ml_core.feature_engineering import preprocess_data_for_model
 
         df = pd.DataFrame(
             {
@@ -80,7 +80,7 @@ class TestFeatureEngineering:
         assert list(df.columns) == original_cols
 
     def test_is_weekend_correct(self):
-        from app.services.feature_engineering import create_time_series_features
+        from ml_core.feature_engineering import create_time_series_features
 
         df = pd.DataFrame(
             {"timestamp": pd.to_datetime(["2024-01-06", "2024-01-07", "2024-01-08"])}
@@ -91,7 +91,7 @@ class TestFeatureEngineering:
         assert result.loc[2, "is_weekend"] == 0
 
     def test_quarter_assignment(self):
-        from app.services.feature_engineering import create_time_series_features
+        from ml_core.feature_engineering import create_time_series_features
 
         df = pd.DataFrame(
             {
@@ -111,7 +111,7 @@ class TestFeatureEngineering:
 
 class TestTemporalFeatures:
     def test_cyclical_features_created(self):
-        from app.services.temporal_features import create_cyclical_features
+        from ml_core.temporal_features import create_cyclical_features
 
         df = pd.DataFrame(
             {
@@ -132,7 +132,7 @@ class TestTemporalFeatures:
             assert col in result.columns
 
     def test_cyclical_values_in_range(self):
-        from app.services.temporal_features import create_cyclical_features
+        from ml_core.temporal_features import create_cyclical_features
 
         df = pd.DataFrame(
             {
@@ -146,7 +146,7 @@ class TestTemporalFeatures:
         assert result["hour_cos"].between(-1.0, 1.0).all()
 
     def test_hour_0_sin_is_zero(self):
-        from app.services.temporal_features import create_cyclical_features
+        from ml_core.temporal_features import create_cyclical_features
 
         df = pd.DataFrame({"hour": [0], "day_of_week": [0], "month": [1]})
         result = create_cyclical_features(df)
@@ -154,7 +154,7 @@ class TestTemporalFeatures:
         assert result["hour_cos"].iloc[0] == pytest.approx(1.0, abs=1e-10)
 
     def test_calendar_features_with_timestamp_column(self):
-        from app.services.temporal_features import create_calendar_features
+        from ml_core.temporal_features import create_calendar_features
 
         df = pd.DataFrame(
             {"timestamp": pd.date_range("2024-01-01", periods=10, freq="D")}
@@ -164,14 +164,14 @@ class TestTemporalFeatures:
         assert "hour_sin" in result.columns
 
     def test_calendar_features_missing_column_raises(self):
-        from app.services.temporal_features import create_calendar_features
+        from ml_core.temporal_features import create_calendar_features
 
         df = pd.DataFrame({"value": [1, 2, 3]})
         with pytest.raises(ValueError):
             create_calendar_features(df)
 
     def test_cyclical_does_not_mutate_input(self):
-        from app.services.temporal_features import create_cyclical_features
+        from ml_core.temporal_features import create_cyclical_features
 
         df = pd.DataFrame({"hour": [0, 6, 12, 18]})
         original_cols = list(df.columns)
@@ -186,7 +186,7 @@ class TestTemporalFeatures:
 
 class TestDataValidator:
     def test_valid_dataframe_passes(self):
-        from app.services.data_validator import validate_raw_data
+        from ml_core.data_validator import validate_raw_data
 
         df = pd.DataFrame(
             {
@@ -199,7 +199,7 @@ class TestDataValidator:
         assert result.errors == []
 
     def test_missing_required_column_raises(self):
-        from app.services.data_validator import DataValidationError, validate_raw_data
+        from ml_core.data_validator import DataValidationError, validate_raw_data
 
         df = pd.DataFrame(
             {"timestamp": pd.date_range("2024-01-01", periods=3, freq="h")}
@@ -208,14 +208,14 @@ class TestDataValidator:
             validate_raw_data(df)
 
     def test_missing_timestamp_raises(self):
-        from app.services.data_validator import DataValidationError, validate_raw_data
+        from ml_core.data_validator import DataValidationError, validate_raw_data
 
         df = pd.DataFrame({"consumption_kwh": [10.0, 20.0]})
         with pytest.raises(DataValidationError, match="timestamp"):
             validate_raw_data(df)
 
     def test_negative_consumption_raises(self):
-        from app.services.data_validator import DataValidationError, validate_raw_data
+        from ml_core.data_validator import DataValidationError, validate_raw_data
 
         df = pd.DataFrame(
             {
@@ -227,7 +227,7 @@ class TestDataValidator:
             validate_raw_data(df)
 
     def test_null_consumption_raises(self):
-        from app.services.data_validator import DataValidationError, validate_raw_data
+        from ml_core.data_validator import DataValidationError, validate_raw_data
 
         df = pd.DataFrame(
             {
@@ -239,7 +239,7 @@ class TestDataValidator:
             validate_raw_data(df)
 
     def test_humidity_out_of_range_raises(self):
-        from app.services.data_validator import DataValidationError, validate_raw_data
+        from ml_core.data_validator import DataValidationError, validate_raw_data
 
         df = pd.DataFrame(
             {
@@ -252,7 +252,7 @@ class TestDataValidator:
             validate_raw_data(df)
 
     def test_temperature_out_of_range_raises(self):
-        from app.services.data_validator import DataValidationError, validate_raw_data
+        from ml_core.data_validator import DataValidationError, validate_raw_data
 
         df = pd.DataFrame(
             {
@@ -265,14 +265,14 @@ class TestDataValidator:
             validate_raw_data(df)
 
     def test_validate_energy_dataframe_empty(self):
-        from app.services.data_validator import validate_energy_dataframe
+        from ml_core.data_validator import validate_energy_dataframe
 
         result = validate_energy_dataframe(pd.DataFrame())
         assert result["valid"] is False
         assert result["row_count"] == 0
 
     def test_validate_energy_dataframe_valid(self):
-        from app.services.data_validator import validate_energy_dataframe
+        from ml_core.data_validator import validate_energy_dataframe
 
         df = pd.DataFrame(
             {
@@ -285,7 +285,7 @@ class TestDataValidator:
         assert result["row_count"] == 4
 
     def test_validate_energy_dataframe_null_consumption_warning(self):
-        from app.services.data_validator import validate_energy_dataframe
+        from ml_core.data_validator import validate_energy_dataframe
 
         df = pd.DataFrame(
             {
@@ -305,7 +305,7 @@ class TestDataValidator:
 
 class TestModelTraining:
     def test_load_data_from_db_returns_dataframe(self):
-        from app.services.training import load_data_from_db
+        from ml_core.training import load_data_from_db
 
         df = load_data_from_db(db_session=None)
         assert isinstance(df, pd.DataFrame)
@@ -314,13 +314,13 @@ class TestModelTraining:
         assert len(df) > 0
 
     def test_load_data_synthetic_non_negative(self):
-        from app.services.training import load_data_from_db
+        from ml_core.training import load_data_from_db
 
         df = load_data_from_db(db_session=None)
         assert (df["consumption_kwh"] >= 0).all()
 
     def test_train_model_returns_model_and_metrics(self):
-        from app.services.training import load_data_from_db, train_model
+        from ml_core.training import load_data_from_db, train_model
 
         df = load_data_from_db(db_session=None)
         model, metrics = train_model(df)
@@ -333,14 +333,14 @@ class TestModelTraining:
         assert metrics["r2_score"] > -10
 
     def test_train_model_metrics_non_negative_mse(self):
-        from app.services.training import load_data_from_db, train_model
+        from ml_core.training import load_data_from_db, train_model
 
         df = load_data_from_db(db_session=None)
         _, metrics = train_model(df)
         assert metrics["mean_squared_error"] >= 0
 
     def test_run_training_pipeline(self, tmp_path, monkeypatch):
-        import app.services.training as training_mod
+        import ml_core.training as training_mod
 
         model_path = str(tmp_path / "model.joblib")
         monkeypatch.setattr(training_mod, "MODEL_PATH", model_path)
@@ -349,7 +349,7 @@ class TestModelTraining:
         assert "mean_squared_error" in metrics
 
     def test_run_training_pipeline_saves_file(self, tmp_path, monkeypatch):
-        import app.services.training as training_mod
+        import ml_core.training as training_mod
 
         model_path = str(tmp_path / "model.joblib")
         monkeypatch.setattr(training_mod, "MODEL_PATH", model_path)

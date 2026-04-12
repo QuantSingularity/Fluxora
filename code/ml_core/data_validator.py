@@ -32,6 +32,7 @@ def validate_raw_data(df: Any) -> ValidationResult:
         if col not in df.columns:
             errors.append(f"Missing required column: '{col}'")
 
+    # Fail fast on missing columns – further checks would raise KeyError
     if errors:
         raise DataValidationError(f"Data validation failed: {errors}")
 
@@ -82,7 +83,7 @@ def validate_energy_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
             "warnings": ["DataFrame is empty."],
         }
 
-    null_counts = df.isnull().sum().to_dict()
+    null_counts: Dict[str, int] = df.isnull().sum().to_dict()
 
     if "consumption_kwh" in df.columns and df["consumption_kwh"].isnull().any():
         warnings.append(

@@ -1,9 +1,22 @@
 """
 Shared pytest fixtures for the Fluxora test suite.
+
+``conftest.py`` lives inside ``backend/`` so pytest discovers it
+automatically when run from that directory.  The project root is added to
+``sys.path`` here so that ``ml_core`` is importable in every test that
+exercises training / feature-engineering code.
 """
 
-import app.models.data  # noqa: F401 – registers EnergyData
-import app.models.user  # noqa: F401 – registers User
+import os
+import sys
+
+# Ensure ml_core (project root) is importable
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+import app.models.data  # noqa: F401 – registers EnergyData with SQLAlchemy
+import app.models.user  # noqa: F401 – registers User with SQLAlchemy
 import pytest
 from app.core.security import _get_db, get_password_hash
 from app.db.dependencies import get_db
@@ -14,7 +27,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-TEST_DATABASE_URL = "sqlite://"
+TEST_DATABASE_URL = "sqlite://"  # in-memory SQLite
 
 engine = create_engine(
     TEST_DATABASE_URL,
@@ -26,6 +39,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(autouse=True)
 def setup_test_db():
+    """Create all tables before each test, drop them after."""
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -53,6 +67,7 @@ def _override_get_db(db_session):
 @pytest.fixture()
 def client(db_session):
     override = _override_get_db(db_session)
+    # Override both injection points so every route gets the test session
     app.dependency_overrides[get_db] = override
     app.dependency_overrides[_get_db] = override
     with TestClient(app) as c:
