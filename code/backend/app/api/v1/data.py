@@ -50,7 +50,7 @@ def query_records(
     """Query records within a time range."""
     if end_time <= start_time:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="end_time must be after start_time",
         )
     records = get_data_by_time_range(
