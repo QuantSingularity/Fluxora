@@ -81,7 +81,9 @@ def generate_compliance_report(
                 results_paginator = config_client.get_paginator(
                     "get_compliance_details_by_config_rule"
                 )
-                for results_page in results_paginator.paginate(ConfigRuleName=rule_name):
+                for results_page in results_paginator.paginate(
+                    ConfigRuleName=rule_name
+                ):
                     for result in results_page["EvaluationResults"]:
                         compliance_data = {
                             "rule_name": rule_name,
@@ -92,7 +94,9 @@ def generate_compliance_report(
                                 "EvaluationResultQualifier"
                             ]["ResourceId"],
                             "compliance_type": result["ComplianceType"],
-                            "result_recorded_time": result["ResultRecordedTime"].isoformat(),
+                            "result_recorded_time": result[
+                                "ResultRecordedTime"
+                            ].isoformat(),
                             "annotation": result.get("Annotation", ""),
                             "config_rule_invoked_time": result[
                                 "ConfigRuleInvokedTime"
