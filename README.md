@@ -12,8 +12,6 @@ Fluxora is an advanced energy forecasting and optimization platform that leverag
   <img src="docs/images/Fluxora_dashboard.bmp" alt="Fluxora Dashboard" width="80%">
 </div>
 
-> **Note**: This project is under active development. Features and functionalities are continuously being enhanced to improve accuracy and user experience.
-
 ## Table of Contents
 
 - [Project Structure](#project-structure)
